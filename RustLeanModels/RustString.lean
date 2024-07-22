@@ -10,6 +10,22 @@ open Char
 open Iterator
 set_option maxHeartbeats 10000000
 
+/-
+Variable naming conventions:
+Assumptions (Prop): starts with g  (I save h for h::t)
+Strings (Str): s, s1, s2, (h::t)
+Substrings (Str): ss
+Prefix (Str): p p1 p2
+Character: c
+Pattern: P
+Char filter (Char → Bool): f
+Position, Index : i j
+Word (member of a split) (Str) : w
+General nat: m n
+List nat: l
+Element of list: x
+Extra parameter in aux functions: k
+-/
 
 namespace RustString
 
@@ -66,9 +82,9 @@ lemma byteSize_EQ : byteSize s = byteSize_def s :=by
 
 
 @[simp]
-def byteSize_aux (l : Str) (s : Nat)  : Nat := match l with
-  | [] => s
-  | h::t => byteSize_aux t (s + Char.utf8Size h)
+def byteSize_aux (s : Str) (k : Nat)  : Nat := match s with
+  | [] => k
+  | h::t => byteSize_aux t (k + Char.utf8Size h)
 
 lemma byteSize_aux_para1_le : i ≤ byteSize_aux p i :=by
   induction p generalizing i;
@@ -130,8 +146,8 @@ def ListCharPos_aux (s: Str) (i: Nat):= match s with
 @[simp]
 def ListCharPos (s: Str) := ListCharPos_aux s 0
 
-lemma ListCharPos_aux_sound : m ∈ ListCharPos_aux s i ↔ ∃ p, List.IsPrefix p s ∧ p ≠ s ∧ byteSize p + i = m :=by
-  induction s generalizing i
+lemma ListCharPos_aux_sound : x ∈ ListCharPos_aux s k ↔ ∃ p, List.IsPrefix p s ∧ p ≠ s ∧ byteSize p + k = x :=by
+  induction s generalizing k
   simp only [ListCharPos_aux, not_mem_nil, prefix_nil, ne_eq, exists_eq_left, not_true_eq_false,
     byteSize, zero_add, false_and]
   rename_i h t ind
@@ -149,22 +165,22 @@ lemma ListCharPos_aux_sound : m ∈ ListCharPos_aux s i ↔ ∃ p, List.IsPrefix
   constructor; intro g; cases g; use [];
   simp only [_root_.nil_prefix, not_false_eq_true, not_sym, byteSize, zero_add, true_and]; symm; assumption
   simp only [ne_eq, not_false_eq_true, not_sym,true_implies] at ind; rename_i gm
-  have ind:= (@ind (i + h.utf8Size)).mp gm; obtain ⟨p, gp⟩:=ind
+  have ind:= (@ind (k + h.utf8Size)).mp gm; obtain ⟨p, gp⟩:=ind
   use (h::p); simp only [prefix_cons_inj, gp, cons.injEq, and_false, not_false_eq_true, not_sym,byteSize, true_and]
   omega
   intro gp; obtain ⟨p, gp⟩:=gp; cases p;
   simp only [_root_.nil_prefix, not_false_eq_true, not_sym, byteSize, zero_add, true_and] at gp
   simp only [← gp, ListCharPos_aux, true_or]
   rename_i hp tp; simp only [cons.injEq, not_and, byteSize] at gp
-  have : ∃ p, p <+: ht :: tt ∧ p ≠ ht :: tt ∧ byteSize p + (i + h.utf8Size) = m:= by
+  have : ∃ p, p <+: ht :: tt ∧ p ≠ ht :: tt ∧ byteSize p + (k + h.utf8Size) = x:= by
     use tp; have g:= prefix_cons gp.left;
     simp only [g, ne_eq, gp.right.left g.left, not_false_eq_true, not_sym, true_and]; rw[← g.left]; omega
   simp only [ne_eq, not_false_eq_true, not_sym, true_implies] at ind;
   simp only [ind.mpr this, or_true]
 
-theorem ListCharPos_sound : m ∈ ListCharPos s ↔ ∃ p, List.IsPrefix p s ∧ p ≠ s ∧ byteSize p = m :=by
-
+theorem ListCharPos_sound : x ∈ ListCharPos s ↔ ∃ pf, List.IsPrefix pf s ∧ pf ≠ s ∧ byteSize pf = x :=by
   simp only [ListCharPos, ListCharPos_aux_sound, ne_eq, add_zero]
+
 
 @[simp]
 def CharBoundPos_aux (l: Str) (s: Nat): List Nat := match l with
@@ -184,35 +200,36 @@ lemma CharBoundPos_aux_para1_add: CharBoundPos_aux s (a+b) = List.map (fun x => 
   simp only [CharBoundPos_aux, map_cons, cons.injEq]
   constructor; omega; rw[add_assoc]; exact ind
 
-lemma CharBoundPos_aux_para1_elim: CharBoundPos_aux s a = List.map (fun x => x + a) (CharBoundPos s) :=by
+lemma CharBoundPos_aux_para1_elim: CharBoundPos_aux s k = List.map (fun x => x + k) (CharBoundPos s) :=by
   unfold CharBoundPos
-  have : a = a + 0 := by simp
+  have : k = k + 0 := by simp only [add_zero]
   rw(config:={occs:=.pos [1]}) [this]; exact CharBoundPos_aux_para1_add
 
-lemma ListCharPos_length_aux : (ListCharPos_aux s i).length = s.length := by
-  induction s generalizing i ; simp [ListCharPos_aux]
+lemma ListCharPos_length_aux : (ListCharPos_aux s k).length = s.length := by
+  induction s generalizing k ; simp [ListCharPos_aux]
   rename_i head tail ind
   simp only [ListCharPos_aux, length_cons]
   split; simp only [List.length_singleton, length_nil, reduceSucc]; rename_i tt h ht;
   simp_all only [ListCharPos_aux, length_cons]
 
+
 lemma ListCharPos_length : (ListCharPos s).length = s.length :=by
   unfold ListCharPos; apply ListCharPos_length_aux
 
-lemma CharBoundPos_length_aux: (CharBoundPos_aux l u).length = l.length + 1 := by
-  induction l generalizing u; unfold CharBoundPos_aux;
+lemma CharBoundPos_length_aux: (CharBoundPos_aux s k).length = s.length + 1 := by
+  induction s generalizing k; unfold CharBoundPos_aux;
   simp_all only [List.length_singleton, length_nil, zero_add]
   rename_i h t ind
   unfold CharBoundPos_aux;
   simp only [zero_add, length_cons, succ.injEq]
   simp_all only
 
-lemma CharBoundPos_length: (CharBoundPos l).length = l.length + 1 := by
+lemma CharBoundPos_length: (CharBoundPos s).length = s.length + 1 := by
   unfold CharBoundPos; apply CharBoundPos_length_aux
 
-lemma ListCharPos_prefix_CharBoundPos_aux : List.IsPrefix (ListCharPos_aux s u) (CharBoundPos_aux s u) := by
+lemma ListCharPos_prefix_CharBoundPos_aux : List.IsPrefix (ListCharPos_aux s k) (CharBoundPos_aux s k) := by
   generalize hl: s.length = l
-  induction l generalizing s u
+  induction l generalizing s k
   have : s= [] := by apply List.eq_nil_of_length_eq_zero hl
   unfold ListCharPos_aux CharBoundPos_aux
   simp_all only [length_nil, zero_eq]; apply List.nil_prefix
@@ -220,13 +237,14 @@ lemma ListCharPos_prefix_CharBoundPos_aux : List.IsPrefix (ListCharPos_aux s u) 
   unfold ListCharPos_aux CharBoundPos_aux
   cases s; simp_all only [length_nil, not_false_eq_true, not_sym]
   rename_i head tail; simp only
-  cases tail; simp only; unfold List.IsPrefix; use CharBoundPos_aux [] (u + Char.utf8Size head);
+  cases tail; simp only; unfold List.IsPrefix; use CharBoundPos_aux [] (k + Char.utf8Size head);
   simp only [CharBoundPos_aux,singleton_append];
   simp only [ListCharPos_aux, CharBoundPos_aux]; rename_i h1 t1
-  apply (List.prefix_cons_inj u).mpr;
+  apply (List.prefix_cons_inj k).mpr;
   have : (head :: h1 :: t1).length = succ (h1 :: t1).length := by simp only [length_cons]
   rw[this] at hl; simp only  [succ.injEq] at hl;
   exact ind hl
+
 
 lemma ListCharPos_prefix_CharBoundPos: List.IsPrefix (ListCharPos s) (CharBoundPos s) := by
   unfold CharBoundPos ListCharPos; apply ListCharPos_prefix_CharBoundPos_aux
@@ -239,9 +257,9 @@ lemma byteSize_aux_t0 : ∀ h >0, byteSize_aux s (i + h)  > i := by
   have : (i + h + Char.utf8Size h1) = i + (h + Char.utf8Size h1) := by linarith
   simp_all only [gt_iff_lt, add_pos_iff, true_or]
 
-lemma byteSize_gt_ListCharPos_aux: ∀ m ∈ (ListCharPos_aux s i), byteSize_aux s i > m := by
+lemma byteSize_gt_ListCharPos_aux: ∀ x ∈ (ListCharPos_aux s k), byteSize_aux s k > x := by
   generalize hl : s.length = l
-  induction l generalizing i s
+  induction l generalizing k s
   have : s = [] := by apply List.eq_nil_of_length_eq_zero hl
   simp only [this, ListCharPos_aux, not_mem_nil, byteSize_aux, gt_iff_lt, IsEmpty.forall_iff, forall_const]
   rename_i n ind
@@ -251,12 +269,12 @@ lemma byteSize_gt_ListCharPos_aux: ∀ m ∈ (ListCharPos_aux s i), byteSize_aux
   have : Char.utf8Size h > 0 :=by apply Char.utf8Size_pos
   linarith
   rename_i t head tail
-  intro m hm; simp only [mem_cons] at hm; cases hm
-  rename_i hm
+  intro x hx; simp only [mem_cons] at hx; cases hx
+  rename_i hx
   unfold byteSize_aux
-  have : byteSize_aux tail (i + Char.utf8Size h + Char.utf8Size head) > m := by
-    rw[hm] ;
-    have : i + Char.utf8Size h + Char.utf8Size head = i + (Char.utf8Size h + Char.utf8Size head) := by linarith
+  have : byteSize_aux tail (k + Char.utf8Size h + Char.utf8Size head) > x := by
+    rw[hx] ;
+    have : k + Char.utf8Size h + Char.utf8Size head = k + (Char.utf8Size h + Char.utf8Size head) := by linarith
     rw[this]; apply byteSize_aux_t0;
     have : Char.utf8Size h > 0 := by apply Char.utf8Size_pos
     linarith
@@ -265,24 +283,27 @@ lemma byteSize_gt_ListCharPos_aux: ∀ m ∈ (ListCharPos_aux s i), byteSize_aux
   simp only [this, succ.injEq] at hl
   simp_all only [gt_iff_lt, length_cons];
 
-lemma byteSize_gt_ListCharPos: ∀ m ∈ (ListCharPos s), byteSize s > m :=by
+
+lemma byteSize_gt_ListCharPos: ∀ x ∈ (ListCharPos s), byteSize s > x :=by
   unfold ListCharPos; rw[byteSize_aux_para1_elim]; apply byteSize_gt_ListCharPos_aux
 
-lemma not_in_forall_not_eq {s: List Nat} (h: ∀ m ∈ s, a ≠ m) : a ∉ s :=by
+lemma not_in_forall_not_eq {s: List Nat} (h: ∀ x ∈ s, a ≠ x) : a ∉ s :=by
   induction s; simp; rename_i head tail ind
   simp_all only [ne_eq, mem_cons, or_true, not_false_eq_true, implies_true, forall_const,
     forall_true_left, forall_eq_or_imp, not_sym, or_self]
 
-lemma byteSize_aux_mem_CharBoundPos_aux : (byteSize_aux l u) ∈ (CharBoundPos_aux l u) := by
-  induction l generalizing u ;
+
+lemma byteSize_aux_mem_CharBoundPos_aux : (byteSize_aux s k) ∈ (CharBoundPos_aux s k) := by
+  induction s generalizing k ;
   simp only [byteSize_aux, CharBoundPos_aux, mem_singleton]
   rename_i head tail ind
   unfold byteSize_aux CharBoundPos_aux
-  have : (byteSize_aux tail (u + Char.utf8Size head)) ∈  (CharBoundPos_aux tail (u + Char.utf8Size head)) := by
+  have : (byteSize_aux tail (k + Char.utf8Size head)) ∈  (CharBoundPos_aux tail (k + Char.utf8Size head)) := by
     apply ind
   simp_all only [elem_eq_mem, decide_eq_true_eq, decide_True, mem_cons, or_true]
 
-lemma byteSize_in_CharBoundPos :  (byteSize l) ∈  (CharBoundPos l) := by
+
+lemma byteSize_in_CharBoundPos :  (byteSize s) ∈  (CharBoundPos s) := by
   unfold CharBoundPos; rw[byteSize_aux_para1_elim]
   apply byteSize_aux_mem_CharBoundPos_aux
 
@@ -313,70 +334,69 @@ lemma CharBoundPos_eq_ListCharPos_cc_byteSize: CharBoundPos s = (ListCharPos s)+
 theorem CharBoundPos_EQ : CharBoundPos s = CharBoundPos_def s := by
   rw[CharBoundPos_eq_ListCharPos_cc_byteSize, CharBoundPos_def]
 
-lemma prefix_byteSize_le_aux  (h: List.IsPrefix p s) : byteSize_aux p i ≤ byteSize_aux s i:=by
-  generalize hl: s.length = l
-  induction l generalizing p i s
-  have : s =[] := by apply List.eq_nil_of_length_eq_zero hl
+lemma prefix_byteSize_le_aux  (g: List.IsPrefix p s) : byteSize_aux p k ≤ byteSize_aux s k:=by
+  generalize gl: s.length = n
+  induction n generalizing p k s
+  have : s =[] := by apply List.eq_nil_of_length_eq_zero gl
   simp_all only [prefix_nil, length_nil, zero_eq, le_refl]
   rename_i n ind
   cases s; simp_all only [prefix_nil, length_nil, not_false_eq_true, not_sym]
   cases p;
   rename_i head tail; unfold byteSize_aux
-  have : i + Char.utf8Size head ≤ byteSize_aux tail (i + Char.utf8Size head):= by apply byteSize_aux_para1_le
+  have : k + Char.utf8Size head ≤ byteSize_aux tail (k + Char.utf8Size head):= by apply byteSize_aux_para1_le
   linarith
   rename_i hp tp hs ts
-  have := prefix_cons h
+  have := prefix_cons g
   simp_all only [length_cons, succ.injEq, byteSize_aux]
 
 lemma prefix_byteSize_le (h: List.IsPrefix p s) : byteSize p  ≤ byteSize s :=by
   rw[byteSize_aux_para1_elim]; rw[byteSize_aux_para1_elim]; apply prefix_byteSize_le_aux h
 
-lemma prefix_byteSize_lt_aux  (h: List.IsPrefix p s) (hl: p.length < s.length): byteSize_aux p i < byteSize_aux s i:=by
-  generalize hl: s.length = l
-  induction l generalizing p i s
-  have : s =[] := by apply List.eq_nil_of_length_eq_zero hl
+lemma prefix_byteSize_lt_aux  (g: List.IsPrefix p s) (gl: p.length < s.length): byteSize_aux p k < byteSize_aux s k:=by
+  generalize gn: s.length = n
+  induction n generalizing p k s
+  have : s =[] := by apply List.eq_nil_of_length_eq_zero gn
   simp_all only [prefix_nil, length_nil, lt_self_iff_false]
   rename_i n ind
   cases s; simp_all only [prefix_nil, lt_self_iff_false]
   cases p;
   rename_i head tail; unfold byteSize_aux
-  have : i + Char.utf8Size head ≤  byteSize_aux tail (i + Char.utf8Size head):= by apply byteSize_aux_para1_le
+  have : k + Char.utf8Size head ≤  byteSize_aux tail (k + Char.utf8Size head):= by apply byteSize_aux_para1_le
   have : Char.utf8Size head > 0 :=by apply Char.utf8Size_pos
   linarith
-  rename_i hp tp hs ts
-  have := prefix_cons h
+  rename_i hs ts hp tp
+  have g := prefix_cons g
   simp_all only [length_cons, succ.injEq, byteSize_aux, gt_iff_lt]
-  rename_i nn
-  have id: ts.length < nn := by linarith [ind]
-  simp_all only
+  apply ind g.right (by omega) gn
 
-lemma prefix_byteSize_lt (h: List.IsPrefix p s) (hl: p.length < s.length): byteSize p  < byteSize s :=by
-  rw[byteSize_aux_para1_elim]; rw[byteSize_aux_para1_elim]; apply prefix_byteSize_lt_aux h hl
 
-lemma length_le_of_byteSize_le (h1: List.IsPrefix p1 s) (h2: List.IsPrefix p2 s)
+lemma prefix_byteSize_lt (g: List.IsPrefix p s) (gp: p.length < s.length): byteSize p  < byteSize s :=by
+  rw[byteSize_aux_para1_elim]; rw[byteSize_aux_para1_elim]; apply prefix_byteSize_lt_aux g gp
+
+lemma length_le_of_byteSize_le (g1: List.IsPrefix p1 s) (g2: List.IsPrefix p2 s)
    (hi: byteSize p1 ≤ byteSize p2) : p1.length ≤ p2.length :=by
   by_contra
   simp_all only [byteSize, not_le]
-  have : List.IsPrefix p2 p1 := by apply List.prefix_of_prefix_length_le h2 h1; linarith
+  have : List.IsPrefix p2 p1 := by apply List.prefix_of_prefix_length_le g2 g1; linarith
   have :  byteSize p2 < byteSize p1 :=by apply prefix_byteSize_lt this ; assumption
   simp only [byteSize] at this
   linarith
 
-lemma byteSize_le_of_length_le (h1: List.IsPrefix p1 s) (h2: List.IsPrefix p2 s)
-   (hi: p1.length ≤ p2.length) : byteSize p1 ≤ byteSize p2 :=by
-  have h:= List.prefix_of_prefix_length_le h1 h2 hi
-  apply prefix_byteSize_le h
+lemma byteSize_le_of_length_le (g1: List.IsPrefix p1 s) (g2: List.IsPrefix p2 s)
+   (gi: p1.length ≤ p2.length) : byteSize p1 ≤ byteSize p2 :=by
+  have g:= List.prefix_of_prefix_length_le g1 g2 gi
+  apply prefix_byteSize_le g
 
 
-lemma prefix_of_byteSize_le (h1: List.IsPrefix p1 s) (h2: List.IsPrefix p2 s)
-   (hi: byteSize p1 ≤ byteSize p2) : List.IsPrefix p1 p2 :=by
-  have h:= length_le_of_byteSize_le h1 h2 hi
-  apply List.prefix_of_prefix_length_le h1 h2 h
+lemma prefix_of_byteSize_le (g1: List.IsPrefix p1 s) (g2: List.IsPrefix p2 s)
+   (gi: byteSize p1 ≤ byteSize p2) : List.IsPrefix p1 p2 :=by
+  have g:= length_le_of_byteSize_le g1 g2 gi
+  apply List.prefix_of_prefix_length_le g1 g2 g
 
-lemma byteSize_le_iif_length_le (h1: List.IsPrefix p1 s) (h2: List.IsPrefix p2 s)
+lemma byteSize_le_iif_length_le (g1: List.IsPrefix p1 s) (g2: List.IsPrefix p2 s)
     : byteSize p1 ≤ byteSize p2 ↔  p1.length ≤ p2.length:=by
-  constructor; intro hi; apply length_le_of_byteSize_le h1 h2 hi
-  intro hi; apply byteSize_le_of_length_le h1 h2 hi
+  constructor; intro gi; apply length_le_of_byteSize_le g1 g2 gi
+  intro gi; apply byteSize_le_of_length_le g1 g2 gi
 
 
 /-
@@ -386,15 +406,15 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.is_char_bou
 -/
 
 @[simp]
-def is_char_boundary (s: Str) (p: Nat) := match s with
-  | [] => if p = 0 then true else false
-  | h::t => if p = 0 then true else
-      if p < Char.utf8Size h then false else is_char_boundary t (p - Char.utf8Size h)
+def is_char_boundary (s: Str) (i: Nat) := match s with
+  | [] => if i = 0 then true else false
+  | h::t => if i = 0 then true else
+      if i < Char.utf8Size h then false else is_char_boundary t (i - Char.utf8Size h)
 
-def is_char_boundary_def (s: Str) (p: Nat) := p ∈ ListCharPos s ∨  p = byteSize s
+def is_char_boundary_def (s: Str) (i: Nat) := i ∈ ListCharPos s ∨  i = byteSize s
 
-theorem is_char_boundary_EQ : is_char_boundary s p =  is_char_boundary_def s p := by
-  induction s generalizing p
+theorem is_char_boundary_EQ : is_char_boundary s i =  is_char_boundary_def s i := by
+  induction s generalizing i
   unfold is_char_boundary is_char_boundary_def ListCharPos ListCharPos_aux byteSize
   simp only [Bool.if_false_right, Bool.and_true, decide_eq_true_eq, not_mem_nil, false_or]
   rename_i h t ind
@@ -405,14 +425,14 @@ theorem is_char_boundary_EQ : is_char_boundary s p =  is_char_boundary_def s p :
   unfold CharBoundPos CharBoundPos_aux
   split; rename_i g; simp only [g, zero_add, mem_cons, true_or]
   split; rename_i g _; simp only [zero_add, mem_cons, g, not_false_eq_true, not_sym, false_or, eq_iff_iff, false_iff]
-  rw[CharBoundPos_aux_para1_elim]; by_contra; rename_i gp
-  simp only [CharBoundPos, mem_map] at gp; obtain⟨a, ga⟩ := gp; omega
-  rename_i gp1 gp2; simp only [zero_add, mem_cons, gp1, not_false_eq_true, not_sym, false_or, eq_iff_iff]
+  rw[CharBoundPos_aux_para1_elim]; by_contra; rename_i gi
+  simp only [CharBoundPos, mem_map] at gi; obtain⟨a, ga⟩ := gi; omega
+  rename_i gi1 gi2; simp only [zero_add, mem_cons, gi1, not_false_eq_true, not_sym, false_or, eq_iff_iff]
   rw[CharBoundPos_aux_para1_elim]; simp only [CharBoundPos, mem_map]
   constructor; intro g; rw[ind, is_char_boundary_def, this, ← CharBoundPos_eq_ListCharPos_cc_byteSize, CharBoundPos] at g;
-  use p - Char.utf8Size h; simp only [g, true_and]; omega
+  use i - Char.utf8Size h; simp only [g, true_and]; omega
   intro g; obtain⟨a, ga⟩ := g ; rw[ind, is_char_boundary_def, this,  ← CharBoundPos_eq_ListCharPos_cc_byteSize, CharBoundPos]
-  have :  p - Char.utf8Size h = a := by omega
+  have :  i - Char.utf8Size h = a := by omega
   rw[this]; simp only [ga]
 
 
@@ -446,9 +466,9 @@ def char_indices_def (s : Str) : List (Nat × Char):= zip (ListCharPos s) s
 def char_indices_def_aux (s: Str) (i: Nat) := zip (ListCharPos_aux s i) s
 
 @[simp]
-def char_indices_aux (s : Str) (cp : Nat): List (Nat × Char) := match s with
+def char_indices_aux (s : Str) (i : Nat): List (Nat × Char) := match s with
   | [] => []
-  | h::t => (cp, h) :: char_indices_aux t (cp + Char.utf8Size h)
+  | h::t => (i, h) :: char_indices_aux t (i + Char.utf8Size h)
 
 @[simp]
 def char_indices s := char_indices_aux s 0
@@ -480,16 +500,16 @@ From: core::str::split_at
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.split_at
 -/
 
-def split_at_aux (s: Str) (p: Nat) (l: Str): Option (List Char × List Char)  := match s with
-  | [] => if p = 0 then some (l, []) else none
-  | h::t => if p = 0 then some (l, h::t) else if p < Char.utf8Size h then none
-            else split_at_aux t (p - Char.utf8Size h) (l++[h])
+def split_at_aux (s: Str) (i: Nat) (ks: Str): Option (List Char × List Char)  := match s with
+  | [] => if i = 0 then some (ks, []) else none
+  | h::t => if i = 0 then some (ks, h::t) else if i < Char.utf8Size h then none
+            else split_at_aux t (i - Char.utf8Size h) (ks++[h])
 
-def split_at (s: Str) (p: Nat) := split_at_aux s p []
+def split_at (s: Str) (i: Nat) := split_at_aux s i []
 
-lemma split_at_aux_para1_elim: split_at_aux s p l = some (s1, s2) ↔  ∃ t1, s1 = l ++ t1 ∧  split_at s p = some (t1, s2) :=by
-  induction s generalizing p l s1 s2
-  unfold split_at split_at_aux; split; rename_i gp; simp only [Option.some.injEq, Prod.mk.injEq, and_imp]
+lemma split_at_aux_para1_elim: split_at_aux s i ks = some (s1, s2) ↔  ∃ t1, s1 = ks ++ t1 ∧  split_at s i = some (t1, s2) :=by
+  induction s generalizing i ks s1 s2
+  unfold split_at split_at_aux; split; rename_i gi; simp only [Option.some.injEq, Prod.mk.injEq, and_imp]
   constructor
   intro g1 ; use []; simp only [g1, and_self, and_true]; rw[← g1.right]; simp only [List.append_nil]
   intro g; obtain ⟨t1, g⟩:=g ; rw[g.left, ← g.right.left, ← g.right.right]; simp only [List.append_nil,and_self]
@@ -497,38 +517,38 @@ lemma split_at_aux_para1_elim: split_at_aux s p l = some (s1, s2) ↔  ∃ t1, s
   rename_i h t ind ;
   constructor; intro g
   unfold split_at_aux at g; split at g; simp only [Option.some.injEq, Prod.mk.injEq] at g
-  use []; rename_i gp; rw[gp, g.left]; unfold split_at split_at_aux
+  use []; rename_i gi; rw[gi, g.left]; unfold split_at split_at_aux
   simp only [List.append_nil, ↓reduceIte, Option.some.injEq, Prod.mk.injEq, true_and]; exact g.right
   split at g; contradiction; have g:= ind.mp g ; obtain ⟨t1, g⟩:=g
   use [h]++ t1; simp only [g, List.append_assoc, singleton_append, true_and]
   unfold split_at split_at_aux;  split; omega; simp only [List.nil_append]
-  apply (@ind (p - Char.utf8Size h) [h] (h::t1) s2).mpr
+  apply (@ind (i - Char.utf8Size h) [h] (h::t1) s2).mpr
   use t1; simp only [singleton_append, g, and_self]
   intro g; obtain ⟨t1,g⟩ := g
   unfold split_at_aux; split; simp only [Option.some.injEq, Prod.mk.injEq]
-  rename_i gp; rw[gp] at g; unfold split_at split_at_aux at g
+  rename_i gi; rw[gi] at g; unfold split_at split_at_aux at g
   simp only [↓reduceIte, Option.some.injEq, Prod.mk.injEq] at g
   simp only [g, and_true]; rw[← g.right.left]; simp only [List.append_nil]
   split; unfold split_at split_at_aux at g; split at g; omega; simp only [and_false] at g
-  apply (@ind (p - Char.utf8Size h) (l++[h]) s1 s2).mpr
+  apply (@ind (i - Char.utf8Size h) (ks++[h]) s1 s2).mpr
   unfold split_at split_at_aux at g; split at g; omega; simp only [List.nil_append] at g
   have g1:= ind.mp g.right; obtain ⟨tx, g1⟩:=g1
   use tx; simp only [g, g1, singleton_append, List.append_assoc, and_self]
 
-lemma split_at_aux_none : split_at_aux s p l = none ↔ split_at s p = none :=by
+lemma split_at_aux_none : split_at_aux s i ks = none ↔ split_at s i = none :=by
   constructor;
-  intro g; generalize gp: split_at s p = sp
+  intro g; generalize gi: split_at s i = sp
   cases sp; simp only; rename_i v
-  have : ∃ t1, l ++ v.1 = l ++ t1 ∧  split_at s p = some (t1, v.2) := by use v.1
+  have : ∃ t1, ks ++ v.1 = ks ++ t1 ∧  split_at s i = some (t1, v.2) := by use v.1
   have := split_at_aux_para1_elim.mpr this;
   simp only [this, not_false_eq_true, not_sym] at g
-  intro g; generalize gp: split_at_aux s p l = sp
+  intro g; generalize gi: split_at_aux s i ks = sp
   cases sp; simp only;
-  have gp := split_at_aux_para1_elim.mp gp; obtain ⟨x, gp⟩:=gp
-  simp only [g, not_false_eq_true, not_sym, and_false] at gp
+  have gi := split_at_aux_para1_elim.mp gi; obtain ⟨x, gi⟩:=gi
+  simp only [g, not_false_eq_true, not_sym, and_false] at gi
 
-lemma split_at_aux_none_sound : split_at_aux s p l = none ↔ ¬ ∃ s1, List.IsPrefix s1 s ∧ byteSize s1 = p :=by
-  induction s generalizing p l
+lemma split_at_aux_none_sound : split_at_aux s i ks = none ↔ ¬ ∃ s1, List.IsPrefix s1 s ∧ byteSize s1 = i :=by
+  induction s generalizing i ks
   unfold split_at_aux;
   simp only [ite_eq_right_iff, not_false_eq_true, not_sym, imp_false, prefix_nil, exists_eq_left]
   simp only [byteSize, byteSize_aux]; omega
@@ -552,15 +572,15 @@ lemma split_at_aux_none_sound : split_at_aux s p l = none ↔ ¬ ∃ s1, List.Is
   have : List.IsPrefix (h :: s1) (h :: t) :=by apply prefix_cons_mpr g1.left
   have g:= g (h::s1) this; simp only [byteSize_cons] at g; omega
 
-theorem split_at_none_sound : split_at s p = none ↔ ¬ ∃ s1, List.IsPrefix s1 s ∧ byteSize s1 = p :=by
+theorem split_at_none_sound : split_at s i = none ↔ ¬ ∃ s1, List.IsPrefix s1 s ∧ byteSize s1 = i :=by
   unfold split_at; exact split_at_aux_none_sound
 
 
-theorem split_at_some_sound : split_at s p= some (s1, s2) ↔ byteSize s1 = p ∧ s = s1 ++ s2 :=by
-  induction s generalizing p s1 s2
+theorem split_at_some_sound : split_at s i= some (s1, s2) ↔ byteSize s1 = i ∧ s = s1 ++ s2 :=by
+  induction s generalizing i s1 s2
   unfold split_at split_at_aux ; split
   constructor; simp only [Option.some.injEq, Prod.mk.injEq, nil_eq_append, and_imp]
-  intro g1 g2; rename_i gp; rw[← g1, gp]; simp only [g2, and_self, and_true]; rw[byteSize_aux_para1_elim]
+  intro g1 g2; rename_i gi; rw[← g1, gi]; simp only [g2, and_self, and_true]; rw[byteSize_aux_para1_elim]
   rw[← g2]; simp only [byteSize_aux]
   simp only [nil_eq_append, Option.some.injEq, Prod.mk.injEq, and_imp]
   intro _ g2 g3; rw[g2,g3]; simp only [and_self]
@@ -570,19 +590,19 @@ theorem split_at_some_sound : split_at s p= some (s1, s2) ↔ byteSize s1 = p �
   rename_i h t ind
   constructor
   intro g; unfold split_at split_at_aux at g
-  split at g; simp only [Option.some.injEq, Prod.mk.injEq] at g; rename_i gp
-  rw[gp, ← g.left]; simp only [byteSize, byteSize_aux, g.right, List.nil_append, and_self]
+  split at g; simp only [Option.some.injEq, Prod.mk.injEq] at g; rename_i gi
+  rw[gi, ← g.left]; simp only [byteSize, byteSize_aux, g.right, List.nil_append, and_self]
   split at g; contradiction; simp only [List.nil_append] at g
   have g:= split_at_aux_para1_elim.mp g; obtain ⟨t1, g⟩ := g
   have g1:= ind.mp g.right
   simp only [g, singleton_append, byteSize_cons, g1, cons_append, and_true];
   simp only [List.nil_append, and_true]; omega
   --mpr
-  intro g ; unfold split_at split_at_aux; split ; rename_i gp
-  rw[gp] at g; have gs1:= nil_of_byteSize_zero g.left ; rw[g.right, gs1]; simp only [List.nil_append]
+  intro g ; unfold split_at split_at_aux; split ; rename_i gi
+  rw[gi] at g; have gs1:= nil_of_byteSize_zero g.left ; rw[g.right, gs1]; simp only [List.nil_append]
   split; cases s1; simp only [byteSize, byteSize_aux, List.nil_append] at g; omega
   rename_i hs1 ts1; simp only [byteSize_cons, cons_append, cons.injEq] at g;
-  rename_i gp; rw [g.right.left] at gp; omega
+  rename_i gi; rw [g.right.left] at gi; omega
   simp only [List.nil_append]; rw[split_at_aux_para1_elim]
   cases s1; simp only [byteSize, byteSize_aux, List.nil_append] at g; omega
   rename_i hs1 ts1; simp only [byteSize_cons, cons_append, cons.injEq] at g;
@@ -594,8 +614,8 @@ lemma split_at_zero: split_at s 0 = some ([], s) := by
   unfold split_at split_at_aux; simp only [↓reduceIte]
   split; simp only; simp only
 
-lemma split_at_is_char_boundary_none: ¬ is_char_boundary s p ↔  split_at s p = none :=by
-  induction s generalizing p
+lemma split_at_is_char_boundary_none: ¬ is_char_boundary s i ↔  split_at s i = none :=by
+  induction s generalizing i
   unfold is_char_boundary split_at split_at_aux
   simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not, ite_eq_right_iff, imp_self]
   rename_i h t ind
@@ -612,6 +632,7 @@ lemma split_at_is_char_boundary_none: ¬ is_char_boundary s p ↔  split_at s p 
     IsEmpty.forall_iff, and_self, forall_true_left]
   simp_all only [Bool.not_eq_true, not_lt, not_false_eq_true, not_sym, forall_true_left, true_and]
   exact split_at_aux_none.mp
+
 
 
 
@@ -639,19 +660,19 @@ From: core::str::get
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.floor_char_boundary
 -/
 
-def PrefixFromPos_safe_r (s: Str) (p: Nat): Str := match s with
+def PrefixFromPos_safe_r (s: Str) (i: Nat): Str := match s with
   | [] => []
-  | h::t => if p = 0 then [] else h::PrefixFromPos_safe_r t (p - Char.utf8Size h)
+  | h::t => if i = 0 then [] else h::PrefixFromPos_safe_r t (i - Char.utf8Size h)
 
 @[simp]
-def PrefixFromPos (s: Str) (p: Nat): Option Str :=
-      if is_char_boundary s p then some (PrefixFromPos_safe_r s p) else none
+def PrefixFromPos (s: Str) (i: Nat): Option Str :=
+      if is_char_boundary s i then some (PrefixFromPos_safe_r s i) else none
 
 
-lemma PrefixFromPos_verified: PrefixFromPos s p = some l ↔ (List.IsPrefix l s) ∧ (byteSize l = p) := by
+lemma PrefixFromPos_verified: PrefixFromPos s i = some p ↔ (List.IsPrefix p s) ∧ (byteSize p = i) := by
   unfold PrefixFromPos ;
   split; simp only [Option.some.injEq, byteSize]
-  induction s generalizing p l
+  induction s generalizing i p
   rename_i h;
   simp only [is_char_boundary, ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not] at h;
   rw[h]; unfold PrefixFromPos_safe_r;
@@ -662,7 +683,7 @@ lemma PrefixFromPos_verified: PrefixFromPos s p = some l ↔ (List.IsPrefix l s)
   unfold PrefixFromPos_safe_r
   constructor;
   intro ih
-  cases l ; simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not] at ih ;
+  cases p ; simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not] at ih ;
   simp only [List.nil_prefix, byteSize, ih, and_self]
   rename_i hl tl; split at ih; contradiction
   have ih := List.cons_eq_cons.mp ih
@@ -673,7 +694,7 @@ lemma PrefixFromPos_verified: PrefixFromPos s p = some l ↔ (List.IsPrefix l s)
   have ind:= (ind h.right).mp ih.right
   constructor; apply prefix_cons_mpr ind.left hl;
   simp only [byteSize] ; rw[← ih.left]; omega
-  cases l; simp only [_root_.nil_prefix, byteSize_aux, true_and, ite_eq_left_iff, not_false_eq_true,
+  cases p; simp only [_root_.nil_prefix, byteSize_aux, true_and, ite_eq_left_iff, not_false_eq_true,
     not_sym, imp_false, not_not]
   intro hp; symm at hp; exact hp
   rename_i hl tl; intro h1;
@@ -687,8 +708,8 @@ lemma PrefixFromPos_verified: PrefixFromPos s p = some l ↔ (List.IsPrefix l s)
   rename_i hp; simp only [hp, not_false_eq_true, not_sym, forall_true_left] at h
   simp only [byteSize, zero_add] at h1;
   simp only [cons.injEq, true_and]
-  have v1 : byteSize tl  = p - Char.utf8Size hl := by omega
-  have v: (tl <+: tail) ∧ byteSize tl  = p - Char.utf8Size hl := by
+  have v1 : byteSize tl  = i - Char.utf8Size hl := by omega
+  have v: (tl <+: tail) ∧ byteSize tl  = i - Char.utf8Size hl := by
     apply And.intro ih.right v1
   rw[ih.left] at v
   have ind:= (ind h.right).mpr v
@@ -699,29 +720,29 @@ lemma PrefixFromPos_verified: PrefixFromPos s p = some l ↔ (List.IsPrefix l s)
   have h1 := byteSize_prefix_is_char_boundary h0.left; rw[h0.right] at h1
   rw[h1] at h; contradiction
 
-lemma PrefixFromPos_byteSize : PrefixFromPos s p = some l →  byteSize l = p := by
+lemma PrefixFromPos_byteSize : PrefixFromPos s i = some p →  byteSize p = i := by
   intro h ;
   have h1 := PrefixFromPos_verified.mp h
   exact h1.right
 
-lemma is_char_boundary_from_prefix (h: PrefixFromPos s p = some pre)
-    : is_char_boundary s p := by
+lemma is_char_boundary_from_prefix (h: PrefixFromPos s i = some pre)
+    : is_char_boundary s i := by
   unfold PrefixFromPos at h
   split at h; assumption; contradiction
 
 lemma PrefixFromPos_self: PrefixFromPos s0 (byteSize s0) = some s0 :=by
   apply PrefixFromPos_verified.mpr; simp
 
-lemma PrefixFromPos_prefix (hp: List.IsPrefix p s) : PrefixFromPos s (byteSize p) = some p := by
+lemma PrefixFromPos_prefix (hp: List.IsPrefix i s) : PrefixFromPos s (byteSize i) = some i := by
   apply PrefixFromPos_verified.mpr; simp [hp]
 
-lemma PrefixFromPos_eq_split_at_none: PrefixFromPos s p = none ↔  split_at s p = none :=by
+lemma PrefixFromPos_eq_split_at_none: PrefixFromPos s i = none ↔  split_at s i = none :=by
   simp only [PrefixFromPos, ite_eq_right_iff, not_false_eq_true, not_sym, imp_false,
     Bool.not_eq_true]
   rw [← split_at_is_char_boundary_none]; simp only [Bool.not_eq_true]
 
-lemma PrefixFromPos_eq_split_at_aux_some: PrefixFromPos s p = some u ↔ ∃ v, split_at s p= some (u,v) :=by
-  induction s generalizing p  u
+lemma PrefixFromPos_eq_split_at_aux_some: PrefixFromPos s i = some u ↔ ∃ v, split_at s i= some (u,v) :=by
+  induction s generalizing i  u
   unfold PrefixFromPos split_at split_at_aux is_char_boundary
   simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not, ite_some_none_eq_some,
     Prod.mk.injEq, exists_and_left, exists_eq', and_true, and_congr_right_iff]
@@ -738,30 +759,31 @@ lemma PrefixFromPos_eq_split_at_aux_some: PrefixFromPos s p = some u ↔ ∃ v, 
   have gc:= split_at_aux_para1_elim.mp gc ;
   simp only [singleton_append, not_false_eq_true, not_sym, false_and, exists_const] at gc
   rename_i hu tu; simp only [cons.injEq]
-  have ind:= @ind (p - Char.utf8Size h) tu
+  have ind:= @ind (i - Char.utf8Size h) tu
   simp only [PrefixFromPos, g2, ↓reduceIte, Option.some.injEq, List.append_assoc,
     singleton_append] at ind
   constructor; intro g;
   have ind:= ind.mp g.right; obtain ⟨v, gv⟩:= ind
-  have k:= (@split_at_aux_para1_elim t (p - Char.utf8Size h) [hu] ([hu]++tu) v).mpr (by use tu)
+  have k:= (@split_at_aux_para1_elim t (i - Char.utf8Size h) [hu] ([hu]++tu) v).mpr (by use tu)
   simp only [singleton_append] at k; rw[g.left]; rw[g.left] at k; use v
   intro g; obtain ⟨v, gv⟩:= g; have gv:= split_at_aux_para1_elim.mp gv; obtain ⟨x, gv⟩:= gv
   simp only [singleton_append, cons.injEq] at gv; rw[← gv.left.right] at gv
   have ind:=ind.mpr (by use v; exact gv.right)
   simp only [gv.left.left, ind, and_self]
   rename_i g; have g:= split_at_is_char_boundary_none.mp g
-  have g: split_at_aux t (p - Char.utf8Size h) [h] = none := by apply split_at_aux_none.mpr g
+  have g: split_at_aux t (i - Char.utf8Size h) [h] = none := by apply split_at_aux_none.mpr g
   simp only [List.nil_append, g, not_false_eq_true, not_sym, exists_const]
 
-lemma PrefixFromPos_eq_string_slice : PrefixFromPos s p = string_slice s 0 p :=by
+lemma PrefixFromPos_eq_string_slice : PrefixFromPos s i = string_slice s 0 i :=by
   simp only [ string_slice, not_lt_zero', ↓reduceIte, tsub_zero, Option.bind_eq_bind]
-  generalize gp: PrefixFromPos s p = osp
-  cases osp ; have gp1:= gp;  unfold PrefixFromPos at gp ; split at gp ; contradiction
+  generalize gi: PrefixFromPos s i = osp
+  cases osp ; have gi1:= gi;  unfold PrefixFromPos at gi ; split at gi ; contradiction
   unfold Option.bind; rw[split_at_zero]; simp only
-  rw[PrefixFromPos_eq_split_at_none.mp gp1]
+  rw[PrefixFromPos_eq_split_at_none.mp gi1]
   rw[split_at_zero]; simp only [Option.some_bind]
-  rename_i v; have g:= PrefixFromPos_eq_split_at_aux_some.mp gp; obtain ⟨x,g⟩:=g
+  rename_i v; have g:= PrefixFromPos_eq_split_at_aux_some.mp gi; obtain ⟨x,g⟩:=g
   simp only [g, Option.some_bind]
+
 
 
 /-
@@ -770,33 +792,34 @@ From: str::core::floor_char_boundary
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.floor_char_boundary
 -/
 
-def floor_char_boundary_aux (s: Str) (p: Nat) (pre: Nat): Nat := match s with
-  | [] => pre
-  | h::t => if p < Char.utf8Size h then pre else floor_char_boundary_aux t (p - Char.utf8Size h) (pre + Char.utf8Size h)
+def floor_char_boundary_aux (s: Str) (i: Nat) (k: Nat): Nat := match s with
+  | [] => k
+  | h::t => if i < Char.utf8Size h then k else floor_char_boundary_aux t (i - Char.utf8Size h) (k + Char.utf8Size h)
 
-def floor_char_boundary (s: Str) (p: Nat) := floor_char_boundary_aux s p 0
+def floor_char_boundary (s: Str) (i: Nat) := floor_char_boundary_aux s i 0
 
-lemma sub_floor_char_boundary_sound1: flp = floor_char_boundary_aux s p pre → flp ≥ pre := by
-  induction s generalizing p pre flp
+lemma sub_floor_char_boundary_sound1: flp = floor_char_boundary_aux s i k → flp ≥ k := by
+  induction s generalizing i k flp
   unfold floor_char_boundary_aux; intro h; rw[h]; simp only [ge_iff_le]
   rename_i h t ind
   unfold floor_char_boundary_aux; split; intro h; rw[h];
   intro g; have ind:= ind g ; linarith
 
-lemma sub_floor_char_boundary_sound2: floor_char_boundary_aux s p pre = pre + floor_char_boundary s p := by
+lemma sub_floor_char_boundary_sound2: floor_char_boundary_aux s i k = k + floor_char_boundary s i := by
   unfold floor_char_boundary
-  induction s generalizing p pre
+  induction s generalizing i k
   unfold floor_char_boundary_aux; simp only [add_zero]
   rename_i h t ind
   unfold floor_char_boundary_aux; split; simp only [add_zero]
   rw[ind]; simp only [zero_add];
-  have : floor_char_boundary_aux t (p - Char.utf8Size h) (Char.utf8Size h) = Char.utf8Size h + floor_char_boundary_aux t (p - Char.utf8Size h) 0 := by apply ind
+  have : floor_char_boundary_aux t (i - Char.utf8Size h) (Char.utf8Size h) = Char.utf8Size h + floor_char_boundary_aux t (i - Char.utf8Size h) 0 := by apply ind
   rw[this]; linarith
 
 
-theorem floor_char_boundary_sound:  fcb = floor_char_boundary s p
-      ↔ (is_char_boundary s fcb) ∧ (fcb ≤ p) ∧ (∀ k, ((is_char_boundary s k) ∧ (k ≤ p)) → k ≤ fcb ) :=by
-  induction s generalizing p fcb
+
+theorem floor_char_boundary_sound:  fcb = floor_char_boundary s i
+      ↔ (is_char_boundary s fcb) ∧ (fcb ≤ i) ∧ (∀ j, ((is_char_boundary s j) ∧ (j ≤ i)) → j ≤ fcb ) :=by
+  induction s generalizing i fcb
   unfold floor_char_boundary floor_char_boundary_aux is_char_boundary at *
   constructor; intro g; rw[g];
   simp only [↓reduceIte, _root_.zero_le, ite_eq_left_iff, not_false_eq_true, not_sym, imp_false,
@@ -810,21 +833,21 @@ theorem floor_char_boundary_sound:  fcb = floor_char_boundary s p
   split at g; rw[g]; simp only [↓reduceIte, _root_.zero_le, ite_eq_left_iff,
     Bool.ite_eq_true_distrib, not_false_eq_true, not_sym, if_false_left, not_lt, nonpos_iff_eq_zero,
     and_imp, true_and]
-  intro k gk1 gk2; omega
-  have gk:= sub_floor_char_boundary_sound1 g
-  have gk: ¬ (fcb < Char.utf8Size h) := by linarith
-  have gk2: Char.utf8Size h > 0 :=by apply Char.utf8Size_pos
-  have gk2: ¬ fcb = 0 := by linarith
-  simp only [gk2, not_false_eq_true, not_sym, ↓reduceIte, gk, ite_eq_left_iff,
+  intro j gj1 gj2; omega
+  have gj:= sub_floor_char_boundary_sound1 g
+  have gj: ¬ (fcb < Char.utf8Size h) := by linarith
+  have gj2: Char.utf8Size h > 0 :=by apply Char.utf8Size_pos
+  have gj2: ¬ fcb = 0 := by linarith
+  simp only [gj2, not_false_eq_true, not_sym, ↓reduceIte, gj, ite_eq_left_iff,
     Bool.ite_eq_true_distrib, if_false_left, not_lt, and_imp]
   rw[sub_floor_char_boundary_sound2] at g;
-  have g: fcb - Char.utf8Size h = floor_char_boundary t (p - Char.utf8Size h) :=by omega
+  have g: fcb - Char.utf8Size h = floor_char_boundary t (i - Char.utf8Size h) :=by omega
   have ind:= ind.mp g; simp only [ind, true_and]
-  constructor; omega; intro p0 gp0 gp01 ;
+  constructor; omega; intro p0 gi0 gi01 ;
   have indr := ind.right.right
   by_cases (p0=0); linarith; rename_i v1;
-  have gp0:= gp0 v1; have indr:= indr (p0 - Char.utf8Size h);
-  simp only [gp0, tsub_le_iff_right, true_and] at indr; omega
+  have gi0:= gi0 v1; have indr:= indr (p0 - Char.utf8Size h);
+  simp only [gi0, tsub_le_iff_right, true_and] at indr; omega
   split; rename_i gf; rw[gf];
   simp only [_root_.zero_le, ite_eq_left_iff, Bool.ite_eq_true_distrib,not_false_eq_true,
       not_sym, if_false_left, not_lt, nonpos_iff_eq_zero, and_imp, true_and, zero_add]
@@ -835,18 +858,18 @@ theorem floor_char_boundary_sound:  fcb = floor_char_boundary s p
     is_char_boundary_zero, and_self, forall_true_left, imp_false, not_le] at g
   omega; intro g; simp only [Bool.ite_eq_true_distrib, not_false_eq_true, not_sym, if_false_left,
     not_lt, ite_eq_left_iff, and_imp] at g
-  have :¬ p < Char.utf8Size h := by omega
+  have :¬ i < Char.utf8Size h := by omega
   simp only [this, ↓reduceIte, zero_add]; rw[sub_floor_char_boundary_sound2]
-  have id1: is_char_boundary t (fcb-Char.utf8Size h) = true ∧ fcb - Char.utf8Size h ≤ p -Char.utf8Size h
-        ∧ ∀ (k : ℕ), is_char_boundary t k = true ∧ k ≤ p -Char.utf8Size h → k ≤ fcb - Char.utf8Size h := by
+  have id1: is_char_boundary t (fcb-Char.utf8Size h) = true ∧ fcb - Char.utf8Size h ≤ i -Char.utf8Size h
+        ∧ ∀ (j : ℕ), is_char_boundary t j = true ∧ j ≤ i -Char.utf8Size h → j ≤ fcb - Char.utf8Size h := by
     constructor; exact g.left.right; constructor; omega
-    intro k gk; have g:= g.right.right (k + Char.utf8Size h)
-    have : ¬k + Char.utf8Size h = 0 := by
+    intro j gj; have g:= g.right.right (j + Char.utf8Size h)
+    have : ¬j + Char.utf8Size h = 0 := by
       have : Char.utf8Size h > 0:= by apply Char.utf8Size_pos
       omega
     simp only [this, not_false_eq_true, not_sym, le_add_iff_nonneg_left, _root_.zero_le,
-      add_tsub_cancel_right, gk.left, and_self, forall_true_left] at g
-    have : k + Char.utf8Size h ≤ p :=by omega
+      add_tsub_cancel_right, gj.left, and_self, forall_true_left] at g
+    have : j + Char.utf8Size h ≤ i :=by omega
     simp only [this, forall_true_left] at g; omega
   have ind:= ind.mpr id1; omega
 
@@ -863,50 +886,51 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.ceiling_cha
 -/
 
 
-def ceiling_char_boundary_aux (s: Str) (p: Nat) (pre: Nat): Nat := match s with
-  | [] => pre
+def ceiling_char_boundary_aux (s: Str) (i: Nat) (k: Nat): Nat := match s with
+  | [] => k
   | h::t =>
-      if p = 0 then pre else
-      if p < Char.utf8Size h then pre + Char.utf8Size h else ceiling_char_boundary_aux t (p - Char.utf8Size h) (pre + Char.utf8Size h)
+      if i = 0 then k else
+      if i < Char.utf8Size h then k + Char.utf8Size h else ceiling_char_boundary_aux t (i - Char.utf8Size h) (k + Char.utf8Size h)
 
-def ceiling_char_boundary (s: Str) (p: Nat) := ceiling_char_boundary_aux s p 0
+def ceiling_char_boundary (s: Str) (i: Nat) := ceiling_char_boundary_aux s i 0
 
 
-lemma sub_ceiling_char_boundary_sound1: cep = ceiling_char_boundary_aux s p pre → cep ≥ pre := by
-  induction s generalizing p pre cep
+lemma sub_ceiling_char_boundary_sound1: cep = ceiling_char_boundary_aux s i k → cep ≥ k := by
+  induction s generalizing i k cep
   unfold ceiling_char_boundary_aux; intro h; rw[h]; simp only [ge_iff_le]
   rename_i h t ind
   unfold ceiling_char_boundary_aux; split; intro h; rw[h];
   split; intro g; linarith;
   intro g; have ind:= ind g ; linarith
 
-lemma sub_ceiling_char_boundary_sound2: ceiling_char_boundary_aux s p pre = pre + ceiling_char_boundary s p := by
+lemma sub_ceiling_char_boundary_sound2: ceiling_char_boundary_aux s i k = k + ceiling_char_boundary s i := by
   unfold ceiling_char_boundary
-  induction s generalizing p pre
+  induction s generalizing i k
   unfold ceiling_char_boundary_aux; simp only [add_zero]
   rename_i h t ind
   unfold ceiling_char_boundary_aux; split; simp only [add_zero]
   rw[ind]; simp only [zero_add]; split; simp only
-  have : ceiling_char_boundary_aux t (p - Char.utf8Size h) (Char.utf8Size h) = Char.utf8Size h + ceiling_char_boundary_aux t (p - Char.utf8Size h) 0 := by apply ind
+  have : ceiling_char_boundary_aux t (i - Char.utf8Size h) (Char.utf8Size h) = Char.utf8Size h + ceiling_char_boundary_aux t (i - Char.utf8Size h) 0 := by apply ind
   rw[this]; linarith
 
+
 -- based on the behavior of the Rust ceiling_char_boundary function:
-theorem ceiling_char_boundary_sound_sp_case (gps: p > byteSize s) : ceiling_char_boundary s p = byteSize s := by
-  induction s generalizing p;
+theorem ceiling_char_boundary_sound_sp_case (gis: i > byteSize s) : ceiling_char_boundary s i = byteSize s := by
+  induction s generalizing i;
   simp only [ceiling_char_boundary, ceiling_char_boundary_aux, byteSize, byteSize_aux]
   rename_i h t ind
   rw[byteSize_cons] at *; simp only [ceiling_char_boundary, ceiling_char_boundary_aux]
-  have i1: ¬ p = 0 := by omega
-  have i2: ¬ p < Char.utf8Size h := by omega
+  have i1: ¬ i = 0 := by omega
+  have i2: ¬ i < Char.utf8Size h := by omega
   simp only [i1, not_false_eq_true, not_sym, ↓reduceIte, i2, zero_add, sub_ceiling_char_boundary_sound2]
-  have i1: p - Char.utf8Size h > byteSize t := by omega
+  have i1: i - Char.utf8Size h > byteSize t := by omega
   have ind:=ind i1; rw[ind]
 
 
-theorem ceiling_char_boundary_sound (gps: p ≤ byteSize s): cep = ceiling_char_boundary s p
-          ↔ (is_char_boundary s cep) ∧ (cep ≥  p) ∧ (∀ k, ((is_char_boundary s k) ∧ (k ≥  p)) → k ≥  cep ) :=by
-  induction s generalizing p cep
-  simp only [byteSize, byteSize_aux, nonpos_iff_eq_zero] at gps; rw[gps]
+theorem ceiling_char_boundary_sound (gis: i ≤ byteSize s): cep = ceiling_char_boundary s i
+          ↔ (is_char_boundary s cep) ∧ (cep ≥  i) ∧ (∀ j, ((is_char_boundary s j) ∧ (j ≥  i)) → j ≥  cep ) :=by
+  induction s generalizing i cep
+  simp only [byteSize, byteSize_aux, nonpos_iff_eq_zero] at gis; rw[gis]
   unfold ceiling_char_boundary ceiling_char_boundary_aux is_char_boundary
   constructor; intro g; rw[g]
   simp only [↓reduceIte, ge_iff_le, nonpos_iff_eq_zero, ite_eq_left_iff, not_false_eq_true, not_sym,
@@ -916,7 +940,7 @@ theorem ceiling_char_boundary_sound (gps: p ≤ byteSize s): cep = ceiling_char_
   rename_i h t ind
   unfold ceiling_char_boundary ceiling_char_boundary_aux is_char_boundary
   constructor; intro g
-  split at g; rw[g]; rename_i gp; rw[gp]
+  split at g; rw[g]; rename_i gi; rw[gi]
   simp only [↓reduceIte, ge_iff_le, le_refl, ite_eq_left_iff, Bool.ite_eq_true_distrib,
     not_false_eq_true, not_sym, if_false_left, not_lt, _root_.zero_le, and_true, implies_true,
     forall_const, and_self]
@@ -924,34 +948,34 @@ theorem ceiling_char_boundary_sound (gps: p ≤ byteSize s): cep = ceiling_char_
   have i1: Char.utf8Size h > 0 := by apply Char.utf8Size_pos
   simp only [zero_add] at g
   have i2: ¬ cep = 0 := by linarith
-  rw[g]; rename_i gp; simp only [lt_self_iff_false, ↓reduceIte, ge_iff_le, le_refl,
+  rw[g]; rename_i gi; simp only [lt_self_iff_false, ↓reduceIte, ge_iff_le, le_refl,
     tsub_eq_zero_of_le, ite_eq_left_iff, Bool.ite_eq_true_distrib, not_false_eq_true, not_sym,
     if_false_left, not_lt, and_imp]
   have e1: is_char_boundary t 0 = true :=by apply is_char_boundary_zero
-  have i1: p ≤ Char.utf8Size h := by linarith
+  have i1: i ≤ Char.utf8Size h := by linarith
   simp only [e1, implies_true, i1, true_and]
-  intro k gk1 gk2; omega
-  have gk:= sub_ceiling_char_boundary_sound1 g
-  have gk: ¬ (cep < Char.utf8Size h) := by linarith
-  have gk2: Char.utf8Size h > 0 :=by apply Char.utf8Size_pos
-  have gk2: ¬ cep = 0 := by linarith
-  simp only [gk2, not_false_eq_true, not_sym, ↓reduceIte, gk, ite_eq_left_iff,
+  intro j gj1 gj2; omega
+  have gj:= sub_ceiling_char_boundary_sound1 g
+  have gj: ¬ (cep < Char.utf8Size h) := by linarith
+  have gj2: Char.utf8Size h > 0 :=by apply Char.utf8Size_pos
+  have gj2: ¬ cep = 0 := by linarith
+  simp only [gj2, not_false_eq_true, not_sym, ↓reduceIte, gj, ite_eq_left_iff,
     Bool.ite_eq_true_distrib, if_false_left, not_lt, and_imp]
   rw[sub_ceiling_char_boundary_sound2] at g;
-  have g: cep - Char.utf8Size h = ceiling_char_boundary t (p - Char.utf8Size h) :=by omega
-  have i1: p - Char.utf8Size h ≤ byteSize t := by
-    simp only [byteSize] at gps ; omega
+  have g: cep - Char.utf8Size h = ceiling_char_boundary t (i - Char.utf8Size h) :=by omega
+  have i1: i - Char.utf8Size h ≤ byteSize t := by
+    simp only [byteSize] at gis ; omega
   have ind:= (ind i1).mp g; simp only [ind, true_and]
-  constructor; omega; intro p0 gp0 gp01 ;
+  constructor; omega; intro p0 gi0 gi01 ;
   have indr := ind.right.right
   by_cases (p0=0); linarith; rename_i v1;
-  have gp0:= gp0 v1; have indr:= indr (p0 - Char.utf8Size h);
-  simp only [gp0, tsub_le_iff_right, true_and] at indr
+  have gi0:= gi0 v1; have indr:= indr (p0 - Char.utf8Size h);
+  simp only [gi0, tsub_le_iff_right, true_and] at indr
   omega
   have gch: Char.utf8Size h > 0 :=by apply  Char.utf8Size_pos
   simp only [ite_eq_left_iff, Bool.ite_eq_true_distrib, not_false_eq_true, not_sym, if_false_left,
     not_lt, ge_iff_le, and_imp, zero_add]
-  split; rename_i gp; rw[gp]
+  split; rename_i gi; rw[gi]
   simp only [_root_.zero_le, forall_true_left]
   intro _ g2; have g2:= g2 0;
   simp only [not_true_eq_false, nonpos_iff_eq_zero, ge_iff_le, _root_.zero_le,
@@ -961,24 +985,25 @@ theorem ceiling_char_boundary_sound (gps: p ≤ byteSize s): cep = ceiling_char_
   have g1:= g1 i1;
   split;
   have g3:= g3 (Char.utf8Size h);
-  have i1: p ≤ Char.utf8Size h:= by omega
+  have i1: i ≤ Char.utf8Size h:= by omega
   have i2: is_char_boundary t 0 := is_char_boundary_zero
   simp only [le_refl, ge_iff_le, tsub_eq_zero_of_le, i2, and_self, implies_true, i1,
     forall_true_left] at g3
   omega
   rw[sub_ceiling_char_boundary_sound2]
-  have id1: is_char_boundary t (cep - Char.utf8Size h) = true ∧ cep - Char.utf8Size h ≥ p - Char.utf8Size h ∧
-      ∀ (k : ℕ), is_char_boundary t k = true ∧ k ≥ p - Char.utf8Size h → k ≥ cep - Char.utf8Size h := by
+  have id1: is_char_boundary t (cep - Char.utf8Size h) = true ∧ cep - Char.utf8Size h ≥ i - Char.utf8Size h ∧
+      ∀ (j : ℕ), is_char_boundary t j = true ∧ j ≥ i - Char.utf8Size h → j ≥ cep - Char.utf8Size h := by
     constructor; exact g1.right; constructor; omega
-    intro k gk; have g3:= g3 (k+ Char.utf8Size h)
-    have i1: ¬k + Char.utf8Size h = 0 := by omega
-    have i2: Char.utf8Size h ≤ k + Char.utf8Size h:= by omega
-    have i3: p ≤ k + Char.utf8Size h  := by omega
-    simp only [i1, not_false_eq_true, not_sym, i2, add_tsub_cancel_right, gk.left, and_self,
+    intro j gj; have g3:= g3 (j+ Char.utf8Size h)
+    have i1: ¬j + Char.utf8Size h = 0 := by omega
+    have i2: Char.utf8Size h ≤ j + Char.utf8Size h:= by omega
+    have i3: i ≤ j + Char.utf8Size h  := by omega
+    simp only [i1, not_false_eq_true, not_sym, i2, add_tsub_cancel_right, gj.left, and_self,
       forall_true_left, i3] at g3
     omega
-  have : p - Char.utf8Size h ≤  byteSize t := by rw [byteSize_cons] at gps; omega
+  have : i - Char.utf8Size h ≤  byteSize t := by rw [byteSize_cons] at gis; omega
   have ind:= (ind this).mpr id1 ; omega
+
 
 
 
@@ -1052,7 +1077,6 @@ def contains_char_filter  (s: Str) (f: Char → Bool) := match s with
   | h::t => if f h then true else contains_char_filter t f
 
 theorem contains_char_filter_EQ : contains_char_filter s f  = contains_char_filter_def s f :=by
-
   induction s;
   unfold contains_char_filter contains_char_filter_def
   simp only [not_false_eq_true, not_sym, not_mem_nil, false_and, exists_const]
@@ -1065,22 +1089,22 @@ theorem contains_char_filter_EQ : contains_char_filter s f  = contains_char_filt
 
 ----#eval contains_substring "aaabcfeff".data "a".data
 
-def contains (s: Str) (p: Pattern) : Bool := match p with
+def contains (s: Str) (P: Pattern) : Bool := match P with
   | Pattern.SingleChar c => contains_char_filter s (fun x => x = c)
   | Pattern.ListChar l => contains_char_filter s (fun x => x ∈ l)
   | Pattern.FilterFunction f => contains_char_filter s f
   | Pattern.WholeString ss => contains_substring s ss
 
-lemma contains_substring_of_isPrefixOf: List.isPrefixOf s1 s → contains_substring s s1 :=by
+lemma contains_substring_of_isPrefixOf: List.isPrefixOf ss s → contains_substring s ss :=by
   intro g; have g:= IsPrefix_isPrefixOf_EQ.mp g ; unfold List.IsPrefix at g; obtain ⟨u,g⟩:= g
   rw[contains_substring_EQ]; unfold contains_substring_def; use [], u; simp only [List.nil_append,g]
 
-lemma contains_substring_of_isSuffixOf: List.isSuffixOf s1 s → contains_substring s s1 :=by
+lemma contains_substring_of_isSuffixOf: List.isSuffixOf ss s → contains_substring s ss :=by
   intro g; have g:= IsSuffix_isSuffixOf_EQ.mp g ; unfold List.IsPrefix at g; obtain ⟨u,g⟩:= g
   rw[contains_substring_EQ]; unfold contains_substring_def; use u, []; simp only [g, append_nil]
 
-lemma contains_substring_cons: contains_substring t s1 → contains_substring (h::t) s1 :=by
-  intro g; cases s1
+lemma contains_substring_cons: contains_substring t ss → contains_substring (h::t) ss :=by
+  intro g; cases ss
   . simp only [contains_substring]
   . simp only [contains_substring, g, ite_self]
 
@@ -1114,49 +1138,49 @@ From: str::core::find
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.find
 -/
 
-def find_substring_aux (s: Str) (s1: Str) (p: Nat): Option Nat:= match s, s1 with
-  | _ , [] => some p
+def find_substring_aux (s: Str) (ss: Str) (i: Nat): Option Nat:= match s, ss with
+  | _ , [] => some i
   | [], _ => none
-  | hs::ts, _ => if List.isPrefixOf s1 s then p else find_substring_aux ts s1 (p + Char.utf8Size hs)
+  | hs::ts, _ => if List.isPrefixOf ss s then i else find_substring_aux ts ss (i + Char.utf8Size hs)
 
-def find_substring (s: Str) (s1: Str) := find_substring_aux s s1 0
+def find_substring (s: Str) (ss: Str) := find_substring_aux s ss 0
 
-def is_substringpos (s: Str) (s1: Str) (p: Nat):= ∃ s0 s2, (s = s0 ++ s1 ++ s2) ∧ (byteSize s0 = p)
+def is_substringpos (s: Str) (ss: Str) (i: Nat):= ∃ s0 s2, (s = s0 ++ ss ++ s2) ∧ (byteSize s0 = i)
 
-def is_first_substringpos (s: Str) (s1: Str) (p: Nat) := (is_substringpos s s1 p) ∧ (∀ p1, is_substringpos s s1 p1 → p1 ≥ p)
+def is_first_substringpos (s: Str) (ss: Str) (i: Nat) := (is_substringpos s ss i) ∧ (∀ j, is_substringpos s ss j → j ≥ i)
 
-lemma find_substring_aux_none_sound:  find_substring_aux s s1 l = none ↔  ¬ contains_substring s s1 :=by
-  induction s generalizing s1 l
-  cases s1; simp only [find_substring, find_substring_aux, not_false_eq_true, not_sym,
+lemma find_substring_aux_none_sound:  find_substring_aux s ss l = none ↔  ¬ contains_substring s ss :=by
+  induction s generalizing ss l
+  cases ss; simp only [find_substring, find_substring_aux, not_false_eq_true, not_sym,
     Bool.not_eq_true, IsEmpty.forall_iff]
   constructor; simp only [IsEmpty.forall_iff];
   simp only [contains_substring, not_false_eq_true, not_sym, IsEmpty.forall_iff]
   simp only [find_substring, find_substring_aux, Bool.not_eq_true, forall_true_left]
   simp only [contains_substring]
   rename_i h t ind
-  cases s1; simp only [find_substring, find_substring_aux, not_false_eq_true, not_sym,
+  cases ss; simp only [find_substring, find_substring_aux, not_false_eq_true, not_sym,
     Bool.not_eq_true, IsEmpty.forall_iff]
   constructor; simp only [IsEmpty.forall_iff]
   simp only [contains_substring, not_false_eq_true, not_sym, IsEmpty.forall_iff]
   rename_i hs1 ts1
   simp only [find_substring, find_substring_aux, zero_add, Bool.not_eq_true]
   split; constructor; simp only [IsEmpty.forall_iff]
-  rename_i gp; have gp:= contains_substring_of_isPrefixOf gp;
-  simp only [gp, not_false_eq_true, not_sym, IsEmpty.forall_iff]
-  rename_i gp; simp only [contains_substring, gp, ↓reduceIte]
+  rename_i gi; have gi:= contains_substring_of_isPrefixOf gi;
+  simp only [gi, not_false_eq_true, not_sym, IsEmpty.forall_iff]
+  rename_i gi; simp only [contains_substring, gi, ↓reduceIte]
   simp only [Bool.not_eq_true] at ind; exact ind
 
-theorem find_substring_none_sound:  find_substring s s1 = none ↔   ¬ contains_substring s s1 :=by
+theorem find_substring_none_sound:  find_substring s ss = none ↔   ¬ contains_substring s ss :=by
   unfold find_substring; apply find_substring_aux_none_sound
 
-lemma find_substring_aux_para1_sub (gxk: x ≤ k): find_substring_aux s s1 k = some p → find_substring_aux s s1 (k-x)= some (p-x) :=by
+lemma find_substring_aux_para1_sub (gxk: x ≤ k): find_substring_aux s ss k = some i → find_substring_aux s ss (k-x)= some (i-x) :=by
   induction s generalizing k
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [find_substring_aux, Option.some.injEq, find_substring]
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [find_substring_aux, not_false_eq_true, not_sym, find_substring, IsEmpty.forall_iff]
   rename_i h t ind
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [find_substring_aux, Option.some.injEq, find_substring];
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [find_substring_aux, find_substring, zero_add]
@@ -1167,14 +1191,14 @@ lemma find_substring_aux_para1_sub (gxk: x ≤ k): find_substring_aux s s1 k = s
   have : k + Char.utf8Size h - x = k - x + Char.utf8Size h := by omega
   rw[this] at g1; exact g1
 
-lemma find_substring_aux_para1_add : find_substring_aux s s1 k = some p → find_substring_aux s s1 (k+x)= some (p+x) :=by
+lemma find_substring_aux_para1_add : find_substring_aux s ss k = some i → find_substring_aux s ss (k+x)= some (i+x) :=by
   induction s generalizing k
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [find_substring_aux, Option.some.injEq, find_substring]
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [find_substring_aux, not_false_eq_true, not_sym, find_substring, IsEmpty.forall_iff]
   rename_i h t ind
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [find_substring_aux, Option.some.injEq, find_substring];
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [find_substring_aux, find_substring, zero_add]
@@ -1183,44 +1207,44 @@ lemma find_substring_aux_para1_add : find_substring_aux s s1 k = some p → find
   have : k + x + Char.utf8Size h = k + Char.utf8Size h + x := by omega
   rw[this, g1]
 
-lemma find_substring_aux_para1_elim : find_substring_aux s s1 k = some p → find_substring s s1= some (p-k):= by
+lemma find_substring_aux_para1_elim : find_substring_aux s ss k = some i → find_substring s ss= some (i-k):= by
   unfold find_substring;
   have : 0 = k - k := by simp only [ge_iff_le, le_refl, tsub_eq_zero_of_le] ;
   rw[this]; apply find_substring_aux_para1_sub; simp only [le_refl]
 
-lemma find_substring_aux_para1_le: find_substring_aux s s1 k = some p → p ≥ k := by
+lemma find_substring_aux_para1_le: find_substring_aux s ss k = some i → i ≥ k := by
   induction s generalizing k
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [find_substring_aux, Option.some.injEq, find_substring]
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [find_substring_aux, not_false_eq_true, not_sym, find_substring, IsEmpty.forall_iff]
   rename_i h t ind
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [find_substring_aux, Option.some.injEq, find_substring];
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [find_substring_aux, find_substring, zero_add]
   split; simp only [Option.some.injEq]; intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   intro g1; have g1:= ind g1 ; linarith
 
-theorem find_substring_some_sound: find_substring s s1 = some p ↔  is_first_substringpos s s1 p :=by
+theorem find_substring_some_sound: find_substring s ss = some i ↔  is_first_substringpos s ss i :=by
   constructor
-  induction s generalizing p
-  cases s1; simp only [find_substring, find_substring_aux, Option.some.injEq];
+  induction s generalizing i
+  cases ss; simp only [find_substring, find_substring_aux, Option.some.injEq];
   intro gs; rw[← gs]; unfold is_first_substringpos is_substringpos
   simp only [List.append_nil, nil_eq_append, byteSize, exists_and_right, exists_eq_right,
     exists_eq_left, byteSize_aux, ge_iff_le, _root_.zero_le, implies_true, forall_const, and_self]
   simp only [find_substring, find_substring_aux, not_false_eq_true, not_sym, is_first_substringpos,
     ge_iff_le, IsEmpty.forall_iff]
   rename_i h t ind
-  by_cases (s1 = []); rename_i gs1
-  simp only [find_substring, gs1, find_substring_aux, Option.some.injEq];
+  by_cases (ss = []); rename_i gss
+  simp only [find_substring, gss, find_substring_aux, Option.some.injEq];
   intro gs; rw[← gs]; unfold is_first_substringpos is_substringpos
   simp only [List.append_nil, byteSize, exists_and_right, ge_iff_le, _root_.zero_le,
     forall_exists_index, and_imp, implies_true, forall_const, and_true]
   use []; simp only [List.nil_append, exists_eq', byteSize, and_self]
-  rename_i gs1; simp only [find_substring, find_substring_aux, zero_add]
+  rename_i gss; simp only [find_substring, find_substring_aux, zero_add]
   split; simp only [Option.some.injEq]
-  intro gp; rw[← gp]; unfold is_first_substringpos is_substringpos
+  intro gi; rw[← gi]; unfold is_first_substringpos is_substringpos
   simp only [List.append_assoc, byteSize, exists_and_right, ge_iff_le, _root_.zero_le,
     forall_exists_index, and_imp, implies_true, forall_const, and_true]
   use []; simp only [List.nil_append, byteSize, and_true]
@@ -1232,20 +1256,20 @@ theorem find_substring_some_sound: find_substring s s1 = some p ↔  is_first_su
   obtain ⟨s0, s2, gsl⟩ := gs.left
   use h::s0, s2; simp only [cons_append, List.append_assoc, cons.injEq, true_and, byteSize, gsl]
   rename_i gs0; have gs0:= find_substring_aux_para1_le gs0; omega
-  intro p1 gp1;  obtain ⟨s0, s2, gsl⟩ := gs.left; obtain ⟨s00, s22, g02⟩ := gp1
-  have gsr:= gs.right (p1-Char.utf8Size h)
+  intro j gj;  obtain ⟨s0, s2, gsl⟩ := gs.left; obtain ⟨s00, s22, g02⟩ := gj
+  have gsr:= gs.right (j-Char.utf8Size h)
   cases s00; rename_i gl _; rw[IsPrefix_isPrefixOf_EQ] at gl
-  have : List.IsPrefix s1 (h::t) := by simp only [g02, List.nil_append, prefix_append]
+  have : List.IsPrefix ss (h::t) := by simp only [g02, List.nil_append, prefix_append]
   contradiction
   rename_i hs0 ts0;
   simp only [cons_append, List.append_assoc, cons.injEq, byteSize, zero_add] at g02
-  have: ∃ s0 s2, t = s0 ++ s1 ++ s2 ∧ byteSize s0 = p1 - Char.utf8Size h := by
+  have: ∃ s0 s2, t = s0 ++ ss ++ s2 ∧ byteSize s0 = j - Char.utf8Size h := by
     use ts0, s22; simp only [g02, List.append_assoc, byteSize, true_and]
     omega
   have gsr:= gsr this ; rw[g02.left.left] at gsr; omega
   --mpr
-  induction s generalizing p
-  intro g ; cases s1; unfold find_substring find_substring_aux
+  induction s generalizing i
+  intro g ; cases ss; unfold find_substring find_substring_aux
   unfold is_first_substringpos at g; have g:= g.left; unfold is_substringpos at g
   obtain ⟨s0, s2, g⟩:=g; simp only [List.append_nil, nil_eq_append, byteSize] at g
   simp [g.left.left] at g; simp only [g.right]
@@ -1257,50 +1281,51 @@ theorem find_substring_some_sound: find_substring s s1 = some p ↔  is_first_su
   intro g; unfold is_first_substringpos is_substringpos at g;
   obtain ⟨s0, s2, gl⟩:=g.left; have g:= g.right
   unfold find_substring find_substring_aux
-  by_cases (s1=[]) ; rename_i gs1; rw[gs1]
-  simp only [Option.some.injEq]; rw[gs1] at g
+  by_cases (ss=[]) ; rename_i gss; rw[gss]
+  simp only [Option.some.injEq]; rw[gss] at g
   have : ∃ s0 s2, h :: t = s0 ++ [] ++ s2 ∧ byteSize s0 = 0 :=by
     use [], h::t; simp only [List.append_nil, List.nil_append, byteSize, byteSize_aux, and_self]
-  have g:= g 0 this ; omega ; rename_i gs1
-  simp only [contains_substring.match_1.eq_3, zero_add]; split; rename_i gp
-  have gp:= IsPrefix_isPrefixOf_EQ.mp gp; unfold List.IsPrefix at gp; obtain ⟨u, gp⟩:= gp
-  have : ∃ s0 s2, h :: t = s0 ++ s1 ++ s2 ∧ byteSize s0 = 0 := by
-    use [], u ; simp only [List.nil_append, gp, byteSize, byteSize_aux, and_self]
+  have g:= g 0 this ; omega ; rename_i gss
+  simp only [contains_substring.match_1.eq_3, zero_add]; split; rename_i gi
+  have gi:= IsPrefix_isPrefixOf_EQ.mp gi; unfold List.IsPrefix at gi; obtain ⟨u, gi⟩:= gi
+  have : ∃ s0 s2, h :: t = s0 ++ ss ++ s2 ∧ byteSize s0 = 0 := by
+    use [], u ; simp only [List.nil_append, gi, byteSize, byteSize_aux, and_self]
   have g:= g 0 this ; simp only [Option.some.injEq]; omega
-  have : (is_first_substringpos t s1 (p - Char.utf8Size h)) ∧ (p ≥ Char.utf8Size h) := by
-    rename_i gp; cases s0;
-    have gc: List.IsPrefix s1 (h::t) := by unfold List.IsPrefix; use s2; simp only [gl.left,List.nil_append]
+  have : (is_first_substringpos t ss (i - Char.utf8Size h)) ∧ (i ≥ Char.utf8Size h) := by
+    rename_i gi; cases s0;
+    have gc: List.IsPrefix ss (h::t) := by unfold List.IsPrefix; use s2; simp only [gl.left,List.nil_append]
     have gc:= IsPrefix_isPrefixOf_EQ.mpr gc; contradiction
     rename_i hs0 ts0; simp only [cons_append, List.append_assoc, cons.injEq, zero_add, byteSize_cons] at gl
-    have : p ≥ Char.utf8Size h:= by rw[gl.left.left]; omega
+    have : i ≥ Char.utf8Size h:= by rw[gl.left.left]; omega
     simp only [ge_iff_le, this, and_true]
     unfold is_first_substringpos is_substringpos
     constructor; use ts0, s2;
     simp only [gl, List.append_assoc, byteSize, true_and]; omega
-    intro p0 gu; obtain ⟨u0,u2,gu⟩:=gu
-    have : ∃ s0 s2, h :: t = s0 ++ s1 ++ s2 ∧ byteSize s0 = p0 + Char.utf8Size h := by
+    intro i0 gu; obtain ⟨u0,u2,gu⟩:=gu
+    have : ∃ s0 s2, h :: t = s0 ++ ss ++ s2 ∧ byteSize s0 = i0 + Char.utf8Size h := by
       use h::u0, u2; simp only [gu, List.append_assoc, cons_append, zero_add, true_and, byteSize_cons, add_comm]
-    have g:= g (p0 + Char.utf8Size h) this; omega
+    have g:= g (i0 + Char.utf8Size h) this; omega
   have ind:=ind this.left; unfold find_substring at ind
-  have e: find_substring_aux t s1 (0 + Char.utf8Size h) = some (p - Char.utf8Size h + Char.utf8Size h):= find_substring_aux_para1_add ind
-  have : p - Char.utf8Size h + Char.utf8Size h = p := by omega
+  have e: find_substring_aux t ss (0 + Char.utf8Size h) = some (i - Char.utf8Size h + Char.utf8Size h):= find_substring_aux_para1_add ind
+  have : i - Char.utf8Size h + Char.utf8Size h = i := by omega
   simp only [zero_add, this] at e; exact e
+
 
 
 --#eval find_substring "Löwe 老虎 Léopard Gepardi".data "pard".data
 
-def find_char_filter_aux (s: Str) (f: Char → Bool) (p: Nat) : Option Nat:= match s with
+def find_char_filter_aux (s: Str) (f: Char → Bool) (i: Nat) : Option Nat:= match s with
   | [] => none
-  | h::t => if f h then some p else find_char_filter_aux t f (p + Char.utf8Size h)
+  | h::t => if f h then some i else find_char_filter_aux t f (i + Char.utf8Size h)
 
 def find_char_filter (s: Str) (f: Char → Bool)  := find_char_filter_aux s f 0
 
-def is_char_filter_pos (s: Str) (f: Char → Bool) (p: Nat) := ∃ s0 c s2, (s = s0 ++ [c] ++ s2) ∧ (f c) ∧ (byteSize s0 = p)
+def is_char_filter_pos (s: Str) (f: Char → Bool) (i: Nat) := ∃ s0 c s2, (s = s0 ++ [c] ++ s2) ∧ (f c) ∧ (byteSize s0 = i)
 
-def is_first_char_filter_pos (s: Str) (f: Char → Bool) (p: Nat) := (is_char_filter_pos s f p) ∧ (∀ p1, is_char_filter_pos s f p1 → p1 ≥ p)
+def is_first_char_filter_pos (s: Str) (f: Char → Bool) (i: Nat) := (is_char_filter_pos s f i) ∧ (∀ j, is_char_filter_pos s f j → j ≥ i)
 
-lemma find_char_filter_aux_none_sound: find_char_filter_aux s f p = none ↔  ∀ x ∈ s, ¬ f x :=by
-  induction s generalizing p
+lemma find_char_filter_aux_none_sound: find_char_filter_aux s f i = none ↔  ∀ x ∈ s, ¬ f x :=by
+  induction s generalizing i
   simp only [find_char_filter_aux, not_mem_nil, Bool.not_eq_true, IsEmpty.forall_iff, forall_const,
     forall_true_left]
   rename_i h t ind
@@ -1312,7 +1337,7 @@ lemma find_char_filter_aux_none_sound: find_char_filter_aux s f p = none ↔  �
 theorem find_char_filter_none_sound: find_char_filter s f = none ↔  ∀ x ∈ s, ¬ f x :=by
   unfold find_char_filter; apply find_char_filter_aux_none_sound
 
-lemma find_char_filter_aux_para1_sub (gxk: x ≤ k): find_char_filter_aux s s1 k = some p → find_char_filter_aux s s1 (k-x)= some (p-x) :=by
+lemma find_char_filter_aux_para1_sub (gxk: x ≤ k): find_char_filter_aux s f k = some i → find_char_filter_aux s f (k-x)= some (i-x) :=by
   induction s generalizing k
   simp only [find_char_filter_aux, not_false_eq_true, not_sym, IsEmpty.forall_iff]
   rename_i h t ind
@@ -1324,7 +1349,7 @@ lemma find_char_filter_aux_para1_sub (gxk: x ≤ k): find_char_filter_aux s s1 k
   have : k + Char.utf8Size h - x = k - x + Char.utf8Size h := by omega
   rw[this] at g1; exact g1
 
-lemma find_char_filter_aux_para1_add : find_char_filter_aux s s1 k = some p → find_char_filter_aux s s1 (k+x)= some (p+x) :=by
+lemma find_char_filter_aux_para1_add : find_char_filter_aux s f k = some i → find_char_filter_aux s f (k+x)= some (i+x) :=by
   induction s generalizing k
   simp only [find_char_filter_aux, not_false_eq_true, not_sym, IsEmpty.forall_iff]
   rename_i h t ind
@@ -1334,12 +1359,12 @@ lemma find_char_filter_aux_para1_add : find_char_filter_aux s s1 k = some p → 
   have : k + x + Char.utf8Size h= k + Char.utf8Size h + x := by omega
   rw[this]; exact g1
 
-lemma find_char_filter_aux_para1_elim : find_char_filter_aux s s1 k = some p → find_char_filter s s1= some (p-k):= by
+lemma find_char_filter_aux_para1_elim : find_char_filter_aux s f k = some i → find_char_filter s f= some (i-k):= by
   unfold find_char_filter;
   have : 0 = k - k := by simp only [ge_iff_le, le_refl, tsub_eq_zero_of_le] ;
   rw[this]; apply find_char_filter_aux_para1_sub; simp only [le_refl]
 
-lemma find_char_filter_aux_para1_le: find_char_filter_aux s s1 k = some p → p ≥ k := by
+lemma find_char_filter_aux_para1_le: find_char_filter_aux s f k = some i → i ≥ k := by
   induction s generalizing k
   simp only [find_char_filter_aux, not_false_eq_true, not_sym, ge_iff_le, IsEmpty.forall_iff]
   rename_i h t ind
@@ -1348,8 +1373,9 @@ lemma find_char_filter_aux_para1_le: find_char_filter_aux s s1 k = some p → p 
   intro g1; have g1:= ind g1 ; linarith
 
 
-theorem find_char_filter_some_sound: find_char_filter s f = some p ↔ is_first_char_filter_pos s f p :=by
-  induction s generalizing p
+
+theorem find_char_filter_some_sound: find_char_filter s f = some i ↔ is_first_char_filter_pos s f i :=by
+  induction s generalizing i
   unfold find_char_filter find_char_filter_aux;
   simp only [not_false_eq_true, not_sym, is_first_char_filter_pos, is_char_filter_pos,
     List.append_assoc, singleton_append, nil_eq_append, and_false, false_and, exists_const,
@@ -1373,14 +1399,14 @@ theorem find_char_filter_some_sound: find_char_filter s f = some p ↔ is_first_
   simp only [gsl, List.append_assoc, singleton_append, cons_append, byteSize, byteSize_aux,
     zero_add, true_and]
   rename_i gs0; have gs0:= find_char_filter_aux_para1_le gs0; omega
-  intro p1 gp1;  obtain ⟨s0, c, _, _⟩ := gs.left; obtain ⟨s00, c0, s22, g02⟩ := gp1
-  have gsr:= gs.right (p1-Char.utf8Size h)
+  intro j gj;  obtain ⟨s0, c, _, _⟩ := gs.left; obtain ⟨s00, c0, s22, g02⟩ := gj
+  have gsr:= gs.right (j-Char.utf8Size h)
   cases s00; simp only [List.nil_append, singleton_append, cons.injEq, byteSize, byteSize_aux] at g02
   rw [g02.left.left, g02.right.left] at gs1
   contradiction
   rename_i hs0 ts0;
   simp only [cons_append, List.append_assoc, cons.injEq, byteSize, byteSize_aux, zero_add] at g02
-  have: ∃ s0 c s2, t = s0 ++ [c] ++ s2 ∧ f c = true ∧ byteSize s0 = p1 - Char.utf8Size h := by
+  have: ∃ s0 c s2, t = s0 ++ [c] ++ s2 ∧ f c = true ∧ byteSize s0 = j - Char.utf8Size h := by
     use ts0, c0, s22; simp only [g02, List.nil_append, List.append_assoc, singleton_append,
       byteSize, true_and]
     omega
@@ -1390,8 +1416,8 @@ theorem find_char_filter_some_sound: find_char_filter s f = some p ↔ is_first_
   intro g; split; simp only [Option.some.injEq]
   have : ∃ s0 c s2, h :: t = s0 ++ [c] ++ s2 ∧ f c = true ∧ byteSize s0 = 0 :=by
     use [], h, t; rename_i gf; simp only [List.nil_append, singleton_append, gf, true_and, byteSize, byteSize_aux]
-  have gp:= g.right 0 this; omega
-  have : (is_first_char_filter_pos t f (p - Char.utf8Size h)) ∧ (p ≥ Char.utf8Size h) :=by
+  have gi:= g.right 0 this; omega
+  have : (is_first_char_filter_pos t f (i - Char.utf8Size h)) ∧ (i ≥ Char.utf8Size h) :=by
     unfold is_first_char_filter_pos is_char_filter_pos
     obtain ⟨u1, c, u2, gl⟩ := g.left
     cases u1; simp only [List.nil_append, singleton_append, cons.injEq] at gl
@@ -1400,23 +1426,23 @@ theorem find_char_filter_some_sound: find_char_filter s f = some p ↔ is_first_
     rename_i hu tu; constructor ; constructor
     use tu, c, u2; simp only [gl, List.nil_append, List.append_assoc,
       singleton_append, true_and]; omega
-    intro p0 gp0; obtain ⟨u1, c, u2, gu⟩ := gp0
-    have : ∃ s0 c s2, h :: t = s0 ++ [c] ++ s2 ∧ f c = true ∧ byteSize s0 = p0 + Char.utf8Size h := by
+    intro i0 gi0; obtain ⟨u1, c, u2, gu⟩ := gi0
+    have : ∃ s0 c s2, h :: t = s0 ++ [c] ++ s2 ∧ f c = true ∧ byteSize s0 = i0 + Char.utf8Size h := by
       use h::u1, c, u2; simp only [gu, List.append_assoc, singleton_append, cons_append,
         byteSize_cons, true_and]; omega
-    have g:= g.right (p0 + Char.utf8Size h) this; omega
+    have g:= g.right (i0 + Char.utf8Size h) this; omega
     rw[gl.left.left]; omega
   have ind:= ind.mpr this.left
-  have: find_char_filter_aux t f (0 + Char.utf8Size h) = some (p - Char.utf8Size h + Char.utf8Size h):= by
+  have: find_char_filter_aux t f (0 + Char.utf8Size h) = some (i - Char.utf8Size h + Char.utf8Size h):= by
     unfold find_char_filter at ind ; apply find_char_filter_aux_para1_add ind
   rw[this]; simp only [Option.some.injEq] ; omega
 
 
-def find (s: Str) (p: Pattern) : Option Nat := match p with
+def find (s: Str) (P: Pattern) : Option Nat := match P with
   | Pattern.SingleChar c => find_char_filter s (fun x => x = c)
   | Pattern.ListChar l => find_char_filter s (fun x => x ∈ l)
   | Pattern.FilterFunction f => find_char_filter s f
-  | Pattern.WholeString s1 => find_substring s s1
+  | Pattern.WholeString ss => find_substring s ss
 
 /-
 Function: rfind
@@ -1425,98 +1451,98 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.rfind
 -/
 
 
-def is_last_substringpos (s: Str) (s1: Str) (p: Nat) := (is_substringpos s s1 p) ∧ (∀ p1, is_substringpos s s1 p1 → p1 ≤ p)
+def is_last_substringpos (s: Str) (ss: Str) (i: Nat) := (is_substringpos s ss i) ∧ (∀ j, is_substringpos s ss j → j ≤ i)
 
-def is_last_char_filter_pos (s: Str) (f: Char → Bool) (p: Nat) := (is_char_filter_pos s f p) ∧ (∀ p1, is_char_filter_pos s f p1 → p1 ≤ p)
+def is_last_char_filter_pos (s: Str) (f: Char → Bool) (i: Nat) := (is_char_filter_pos s f i) ∧ (∀ j, is_char_filter_pos s f j → j ≤ i)
 
-def rfind_substring (s: Str) (s1: Str) := match find_substring (List.reverse s) (List.reverse s1) with
+def rfind_substring (s: Str) (ss: Str) := match find_substring (List.reverse s) (List.reverse ss) with
   | none => none
-  | some p => some (byteSize s - byteSize s1 -p)
+  | some i => some (byteSize s - byteSize ss -i)
 
-lemma is_substring_reverse: contains_substring s s1 = contains_substring (reverse s) (reverse s1) :=by
-  by_cases contains_substring s s1
+lemma is_substring_reverse: contains_substring s ss = contains_substring (reverse s) (reverse ss) :=by
+  by_cases contains_substring s ss
   rename_i g; rw[g]; symm; rw[contains_substring_EQ]; unfold contains_substring_def
   rw[contains_substring_EQ] at g; unfold contains_substring_def at g; obtain ⟨u1, u2, gu⟩:=g
-  have: reverse s = (reverse u2) ++ (reverse s1) ++ (reverse u1) :=by
+  have: reverse s = (reverse u2) ++ (reverse ss) ++ (reverse u1) :=by
     rw[gu]; simp only [List.append_assoc, reverse_append]
   rw[this]; use reverse u2, reverse u1
   rename_i g;
-  have : ¬ contains_substring (reverse s) (reverse s1) :=by
+  have : ¬ contains_substring (reverse s) (reverse ss) :=by
     rw[contains_substring_EQ]; unfold contains_substring_def
     rw[contains_substring_EQ] at g; unfold contains_substring_def at g;
     by_contra; rename_i gc; obtain ⟨u1, u2, gu⟩:=gc
     have: s = reverse (reverse s) :=by simp only [reverse_reverse]
-    have: s = (reverse u2) ++ s1 ++ (reverse u1) :=by
+    have: s = (reverse u2) ++ ss ++ (reverse u1) :=by
       rw[this, gu]; simp only [List.append_assoc, reverse_append, reverse_reverse]
-    have: s = (reverse u2) ++ (s1 ++ (reverse u1)) :=by simp only [this, List.append_assoc]
+    have: s = (reverse u2) ++ (ss ++ (reverse u1)) :=by simp only [this, List.append_assoc]
     simp only [List.append_assoc, not_exists] at g
-    have: ¬s = (reverse u2) ++ (s1 ++ reverse u1) := by apply g
+    have: ¬s = (reverse u2) ++ (ss ++ reverse u1) := by apply g
     contradiction
   simp only [g, this]
 
 
-theorem rfind_substring_none_sound: rfind_substring s s1 = none ↔  ¬ contains_substring s s1 := by
+theorem rfind_substring_none_sound: rfind_substring s ss = none ↔  ¬ contains_substring s ss := by
   unfold rfind_substring; split; simp only [Bool.not_eq_true, forall_true_left]
   rename_i g ; have g:= find_substring_none_sound.mp g
   rw [is_substring_reverse];
   simp only [g]; simp only [byteSize, not_false_eq_true, not_sym,
     Bool.not_eq_true, IsEmpty.forall_iff]
   rename_i g;
-  have g: ¬  find_substring (reverse s) (reverse s1) = none:= by simp only [g, not_false_eq_true, not_sym]
+  have g: ¬  find_substring (reverse s) (reverse ss) = none:= by simp only [g, not_false_eq_true, not_sym]
   rw[find_substring_none_sound] at g; simp only [Bool.not_eq_true, Bool.not_eq_false] at g
   rw[← is_substring_reverse] at g; simp only [g, not_false_eq_true, not_sym]
 
 
-lemma is_substringpos_reverse: is_substringpos s s1 p →  is_substringpos (reverse s) (reverse s1) (byteSize s - byteSize s1 - p) :=by
+lemma is_substringpos_reverse: is_substringpos s ss i →  is_substringpos (reverse s) (reverse ss) (byteSize s - byteSize ss - i) :=by
   unfold is_substringpos;
   intro g; obtain ⟨u1, u2, gu⟩ :=g
-  have : reverse s = (reverse u2) ++ (reverse s1) ++ (reverse u1) :=by
+  have : reverse s = (reverse u2) ++ (reverse ss) ++ (reverse u1) :=by
     rw[ gu.left]; simp only [List.append_assoc, reverse_append]
   use (reverse u2) , (reverse u1)
   simp only [this, List.append_assoc,  true_and]
   rw[byteSize_reverse]
-  have: byteSize s = byteSize u1 + byteSize s1 + byteSize u2 := by
+  have: byteSize s = byteSize u1 + byteSize ss + byteSize u2 := by
     rw[gu.left, byteSize_concat, byteSize_concat]
   omega
 
 --should not merge the two (because of Nat subtraction)
-lemma is_substringpos_reverse_mpr: is_substringpos (reverse s) (reverse s1) p →  is_substringpos s s1 (byteSize s - byteSize s1 - p) :=by
+lemma is_substringpos_reverse_mpr: is_substringpos (reverse s) (reverse ss) i →  is_substringpos s ss (byteSize s - byteSize ss - i) :=by
   intro g; obtain ⟨u1, u2, gu⟩ :=g
   have: s = reverse (reverse s) :=by simp only [reverse_reverse]
-  have : s = (reverse u2) ++ s1 ++ (reverse u1) :=by
+  have : s = (reverse u2) ++ ss ++ (reverse u1) :=by
     rw[this, gu.left]; simp only [List.append_assoc, reverse_append, reverse_reverse]
   unfold is_substringpos
   use reverse u2, reverse u1; simp only [this, List.append_assoc,  true_and]
   rw[byteSize_reverse, byteSize_concat, byteSize_reverse, byteSize_concat,  byteSize_reverse]
-  have : byteSize (reverse s) = byteSize (u1 ++ reverse s1) + byteSize u2 := by
+  have : byteSize (reverse s) = byteSize (u1 ++ reverse ss) + byteSize u2 := by
     rw[gu.left, byteSize_concat]
   rw[byteSize_reverse, byteSize_concat, byteSize_reverse] at this
   omega
 
 
-theorem rfind_substring_some_sound: rfind_substring s s1 = some p ↔  is_last_substringpos s s1 p := by
+theorem rfind_substring_some_sound: rfind_substring s ss = some i ↔  is_last_substringpos s ss i := by
   constructor
   unfold rfind_substring; split; simp only [not_false_eq_true, not_sym, IsEmpty.forall_iff];
   simp only [Option.some.injEq]; intro gb;
-  rename_i p0 gt g; have g:= find_substring_some_sound.mp g
+  rename_i i0 gt g; have g:= find_substring_some_sound.mp g
   unfold is_last_substringpos ; unfold is_first_substringpos at g
   have gl:= g.left; have gr:=g.right
   constructor
   unfold is_substringpos at gl ; obtain ⟨u1, u2, gu⟩ := gl
   unfold is_substringpos
   have: s = reverse (reverse s) :=by simp only [reverse_reverse]
-  have : s = (reverse u2) ++ s1 ++ (reverse u1) :=by
+  have : s = (reverse u2) ++ ss ++ (reverse u1) :=by
     rw[this, gu.left]; simp only [List.append_assoc, reverse_append, reverse_reverse]
   use reverse u2, reverse u1; simp only [this, List.append_assoc,  true_and]
   rw[byteSize_reverse, ← gb, ← gu.right]
-  have : byteSize (reverse s) = byteSize (u1 ++ reverse s1) + byteSize u2 := by
+  have : byteSize (reverse s) = byteSize (u1 ++ reverse ss) + byteSize u2 := by
     rw[gu.left, byteSize_concat]
   rw[byteSize_reverse, byteSize_concat, byteSize_reverse] at this
   omega
-  intro p1 gp1; have gp0:= is_substringpos_reverse gp1
-  have gr:= gr (byteSize s - byteSize s1 - p1) gp0
-  unfold is_substringpos at gp1 ; obtain ⟨u1, u2, gu⟩ := gp1
-  have : byteSize s = byteSize u1 + byteSize s1 + byteSize u2 :=by
+  intro j gj; have gi0:= is_substringpos_reverse gj
+  have gr:= gr (byteSize s - byteSize ss - j) gi0
+  unfold is_substringpos at gj ; obtain ⟨u1, u2, gu⟩ := gj
+  have : byteSize s = byteSize u1 + byteSize ss + byteSize u2 :=by
     rw[gu.left, byteSize_concat, byteSize_concat]
   omega
   --mpr
@@ -1525,34 +1551,35 @@ theorem rfind_substring_some_sound: rfind_substring s s1 = some p ↔  is_last_s
   rw[contains_substring_EQ] at gh; unfold contains_substring_def at gh
   simp only [List.append_assoc, not_exists] at gh
   have gl := g.left; unfold is_substringpos at gl; obtain ⟨u1, u2, gl⟩ := gl
-  have : reverse s = u2.reverse ++ (reverse s1 ++ u1.reverse) := by
+  have : reverse s = u2.reverse ++ (reverse ss ++ u1.reverse) := by
     simp only [gl, List.append_assoc, reverse_append]
   have gh:= gh u2.reverse u1.reverse; contradiction
-  rename_i p0 gp0; have gp0:=find_substring_some_sound.mp gp0
+  rename_i i0 gi0; have gi0:=find_substring_some_sound.mp gi0
   simp only [Option.some.injEq]
-  unfold is_first_substringpos at gp0 ; unfold is_last_substringpos at g
-  have g1:= gp0.right (byteSize s - byteSize s1 - p) (is_substringpos_reverse g.left)
-  have g2:= g.right (byteSize s - byteSize s1 - p0) (is_substringpos_reverse_mpr gp0.left)
+  unfold is_first_substringpos at gi0 ; unfold is_last_substringpos at g
+  have g1:= gi0.right (byteSize s - byteSize ss - i) (is_substringpos_reverse g.left)
+  have g2:= g.right (byteSize s - byteSize ss - i0) (is_substringpos_reverse_mpr gi0.left)
   have g:= g.left; unfold is_substringpos at g; obtain ⟨u1, u2, g⟩ := g
-  have : byteSize s = byteSize u1 + byteSize s1 + byteSize u2 :=by
+  have : byteSize s = byteSize u1 + byteSize ss + byteSize u2 :=by
     rw[g.left]; simp only [List.append_assoc, byteSize_concat]; omega
   omega
 
 
+
 --this function return the position next to that of the first char satisfying the filter
-def find_char_filter_next_aux (s: Str) (f: Char → Bool) (p: Nat) : Option Nat:= match s with
+def find_char_filter_next_aux (s: Str) (f: Char → Bool) (i: Nat) : Option Nat:= match s with
   | [] => none
-  | h::t => if f h then some (p + Char.utf8Size h) else find_char_filter_next_aux t f (p + Char.utf8Size h)
+  | h::t => if f h then some (i + Char.utf8Size h) else find_char_filter_next_aux t f (i + Char.utf8Size h)
 
 --this function return the position next to that of the first char satisfying the filter
 def find_char_filter_next (s: Str) (f: Char → Bool)  := find_char_filter_next_aux s f 0
 
 def rfind_char_filter (s: Str) (f: Char → Bool)  := match find_char_filter_next (List.reverse s) f with
   | none => none
-  | some p => some (byteSize s - p)
+  | some i => some (byteSize s - i)
 
-lemma find_char_filter_next_aux_none_eq: find_char_filter_next_aux s f p = none ↔  find_char_filter_aux s f p = none :=by
-  induction s generalizing p
+lemma find_char_filter_next_aux_none_eq: find_char_filter_next_aux s f i = none ↔  find_char_filter_aux s f i = none :=by
+  induction s generalizing i
   unfold find_char_filter_next_aux find_char_filter_aux; simp only [forall_true_left]
   rename_i h t ind
   unfold find_char_filter_next_aux find_char_filter_aux; split; simp only [IsEmpty.forall_iff]
@@ -1573,11 +1600,11 @@ theorem rfind_char_filter_none_sound: rfind_char_filter s f = none ↔   ∀ x �
   simp only [false_iff, not_forall, Bool.not_eq_false, exists_prop, g]
 
 
-def is_find_char_filter_next (s: Str) (f: Char → Bool) (p: Nat) := ∃ s0 c s2, (s = s0 ++ [c] ++ s2) ∧ (f c) ∧ (byteSize s0 + Char.utf8Size c = p)
+def is_find_char_filter_next (s: Str) (f: Char → Bool) (i: Nat) := ∃ s0 c s2, (s = s0 ++ [c] ++ s2) ∧ (f c) ∧ (byteSize s0 + Char.utf8Size c = i)
 
-def is_first_find_char_filter_next (s: Str) (f: Char → Bool) (p: Nat) := (is_find_char_filter_next s f p) ∧ (∀ p1, is_find_char_filter_next s f p1 → p1 ≥ p)
+def is_first_find_char_filter_next (s: Str) (f: Char → Bool) (i: Nat) := (is_find_char_filter_next s f i) ∧ (∀ j, is_find_char_filter_next s f j → j ≥ i)
 
-lemma is_char_filter_pos_reverse: is_char_filter_pos s f p → is_find_char_filter_next (reverse s) f (byteSize s - p) :=by
+lemma is_char_filter_pos_reverse: is_char_filter_pos s f i → is_find_char_filter_next (reverse s) f (byteSize s - i) :=by
   unfold is_char_filter_pos is_find_char_filter_next
   intro g; obtain ⟨u1, c, u2, gu⟩ := g
   have : reverse s = (reverse u2) ++ [c] ++ (reverse u1) :=by
@@ -1589,7 +1616,7 @@ lemma is_char_filter_pos_reverse: is_char_filter_pos s f p → is_find_char_filt
     rw[gu.left]; simp only [List.append_assoc, singleton_append, byteSize_concat, byteSize]; omega
   omega
 --should not merge the two
-lemma is_char_filter_pos_reverse_mpr: is_find_char_filter_next (reverse s) f p → is_char_filter_pos s f (byteSize s - p) :=by
+lemma is_char_filter_pos_reverse_mpr: is_find_char_filter_next (reverse s) f i → is_char_filter_pos s f (byteSize s - i) :=by
   unfold is_char_filter_pos is_find_char_filter_next
   intro g; obtain ⟨u1, c, u2, gu⟩ := g
   have : reverse s.reverse = (reverse u2) ++ [c] ++ (reverse u1) :=by
@@ -1603,7 +1630,7 @@ lemma is_char_filter_pos_reverse_mpr: is_find_char_filter_next (reverse s) f p �
   omega
 
 
-lemma rfind_char_filter_aux_para1_sub (gxk: x ≤ k): find_char_filter_next_aux s s1 k = some p → find_char_filter_next_aux s s1 (k-x)= some (p-x) :=by
+lemma rfind_char_filter_aux_para1_sub (gxk: x ≤ k): find_char_filter_next_aux s f k = some i → find_char_filter_next_aux s f (k-x)= some (i-x) :=by
   induction s generalizing k
   simp only [find_char_filter_next_aux, not_false_eq_true, not_sym, IsEmpty.forall_iff]
   rename_i h t ind
@@ -1615,12 +1642,12 @@ lemma rfind_char_filter_aux_para1_sub (gxk: x ≤ k): find_char_filter_next_aux 
   have : k + Char.utf8Size h - x = k - x + Char.utf8Size h := by omega
   rw[this] at g1; exact g1
 
-lemma rfind_char_filter_aux_para1_elim : find_char_filter_next_aux s s1 k = some p → find_char_filter_next s s1= some (p-k):= by
+lemma rfind_char_filter_aux_para1_elim : find_char_filter_next_aux s f k = some i → find_char_filter_next s f= some (i-k):= by
   unfold find_char_filter_next;
   have : 0 = k - k := by simp only [ge_iff_le, le_refl, tsub_eq_zero_of_le] ;
   rw[this]; apply rfind_char_filter_aux_para1_sub; simp only [le_refl]
 
-lemma rfind_char_filter_aux_para1_le: find_char_filter_next_aux s s1 k = some p → p ≥ k := by
+lemma rfind_char_filter_aux_para1_le: find_char_filter_next_aux s f k = some i → i ≥ k := by
   induction s generalizing k
   simp only [find_char_filter_next_aux, not_false_eq_true, not_sym, ge_iff_le, IsEmpty.forall_iff]
   rename_i h t ind
@@ -1628,8 +1655,8 @@ lemma rfind_char_filter_aux_para1_le: find_char_filter_next_aux s s1 k = some p 
   split; simp only [Option.some.injEq]; intro gk; linarith
   intro g1; have g1:= ind g1 ; linarith
 
-lemma find_char_filter_next_is_first: find_char_filter_next s f = some p →  is_first_find_char_filter_next s f p :=by
-  induction s generalizing p
+lemma find_char_filter_next_is_first: find_char_filter_next s f = some i →  is_first_find_char_filter_next s f i :=by
+  induction s generalizing i
   unfold find_char_filter_next find_char_filter_next_aux;
   simp only [not_false_eq_true, not_sym, IsEmpty.forall_iff]
   rename_i h t ind
@@ -1638,7 +1665,7 @@ lemma find_char_filter_next_is_first: find_char_filter_next s f = some p →  is
   intro gs; simp only [zero_add] at gs; rw[← gs]; unfold is_first_find_char_filter_next is_find_char_filter_next
   constructor; use [], h, t; rename_i g; simp only [List.nil_append, singleton_append, g, byteSize,
     byteSize_aux, zero_add, and_self]
-  intro p0 gp0; obtain ⟨u1, c, u2, gu⟩ := gp0
+  intro i0 gi0; obtain ⟨u1, c, u2, gu⟩ := gi0
   cases u1; simp only [List.nil_append, singleton_append, cons.injEq, byteSize, byteSize_aux,
     zero_add] at gu; rw[gu.left.left, gu.right.right]; simp only [ge_iff_le]
   rename_i hu1 tu1; simp only [cons_append, List.append_assoc, singleton_append, cons.injEq, zero_add] at gu
@@ -1653,25 +1680,25 @@ lemma find_char_filter_next_is_first: find_char_filter_next s f = some p →  is
   simp only [gsl, List.append_assoc, singleton_append, cons_append, byteSize, byteSize_aux,
     zero_add, true_and]
   rename_i gs0; have gs0:= rfind_char_filter_aux_para1_le gs0; omega
-  intro p1 gp1;  obtain ⟨s0, c, _, _⟩ := gs.left; obtain ⟨s00, c0, s22, g02⟩ := gp1
-  have gsr:= gs.right (p1-Char.utf8Size h)
+  intro j gj;  obtain ⟨s0, c, _, _⟩ := gs.left; obtain ⟨s00, c0, s22, g02⟩ := gj
+  have gsr:= gs.right (j-Char.utf8Size h)
   cases s00; simp only [List.nil_append, singleton_append, cons.injEq, byteSize, byteSize_aux] at g02
   rw [g02.left.left, g02.right.left] at gs1
   contradiction
   rename_i hs0 ts0;
   simp only [cons_append, List.append_assoc, cons.injEq, byteSize, byteSize_aux, zero_add] at g02
-  have: ∃ s0 c s2, t = s0 ++ [c] ++ s2 ∧ f c = true ∧ byteSize s0 + Char.utf8Size c = p1 - Char.utf8Size h := by
+  have: ∃ s0 c s2, t = s0 ++ [c] ++ s2 ∧ f c = true ∧ byteSize s0 + Char.utf8Size c = j - Char.utf8Size h := by
     use ts0, c0, s22; simp only [g02, List.nil_append, List.append_assoc, singleton_append,
       byteSize, true_and]
     omega
   have gsr:= gsr this ; rw[g02.left.left] at gsr; omega
 
-theorem rfind_char_filter_some_sound: rfind_char_filter s f = some p ↔ is_last_char_filter_pos s f p :=by
+theorem rfind_char_filter_some_sound: rfind_char_filter s f = some i ↔ is_last_char_filter_pos s f i :=by
   constructor
   unfold rfind_char_filter
   split; simp only [not_false_eq_true, not_sym, IsEmpty.forall_iff]
   rename_i g; have g:= find_char_filter_next_is_first g
-  simp only [Option.some.injEq]; intro gb; rename_i p0 gt
+  simp only [Option.some.injEq]; intro gb; rename_i i0 gt
   unfold is_last_char_filter_pos;
   unfold is_first_char_filter_pos at g
   have gl:= g.left; have gr:=g.right
@@ -1688,9 +1715,9 @@ theorem rfind_char_filter_some_sound: rfind_char_filter s f = some p ↔ is_last
   have e1: byteSize [u] = Char.utf8Size u :=by simp only [byteSize, add_zero]
   rw[byteSize_reverse, byteSize_concat, e1] at this
   omega
-  intro p1 gp1; have gp0:= is_char_filter_pos_reverse gp1
-  have gr:= gr (byteSize s - p1) gp0
-  unfold is_char_filter_pos at gp1 ; obtain ⟨u1, c, u2, gu⟩ := gp1
+  intro j gj; have gi0:= is_char_filter_pos_reverse gj
+  have gr:= gr (byteSize s - j) gi0
+  unfold is_char_filter_pos at gj ; obtain ⟨u1, c, u2, gu⟩ := gj
   have : byteSize s = byteSize u1 + Char.utf8Size c + byteSize u2 :=by
     rw [gu.left]; simp only [List.append_assoc, singleton_append, byteSize_concat, byteSize] ; omega
   omega
@@ -1702,35 +1729,36 @@ theorem rfind_char_filter_some_sound: rfind_char_filter s f = some p ↔ is_last
   have : c ∈  s := by simp only [gl, List.append_assoc, singleton_append, mem_append, mem_cons,
     true_or, or_true]
   have gn:=gn c this; rw[gl.right.left] at gn; contradiction
-  rename_i p0 gp0; simp only [Option.some.injEq]; have gp0:= find_char_filter_next_is_first gp0
-  unfold is_first_find_char_filter_next at gp0; unfold is_last_char_filter_pos at g
-  have g1:= gp0.right (byteSize s - p) (is_char_filter_pos_reverse g.left)
-  have g2:= g.right (byteSize s - p0) (is_char_filter_pos_reverse_mpr gp0.left)
+  rename_i i0 gi0; simp only [Option.some.injEq]; have gi0:= find_char_filter_next_is_first gi0
+  unfold is_first_find_char_filter_next at gi0; unfold is_last_char_filter_pos at g
+  have g1:= gi0.right (byteSize s - i) (is_char_filter_pos_reverse g.left)
+  have g2:= g.right (byteSize s - i0) (is_char_filter_pos_reverse_mpr gi0.left)
   have gl:=g.left; unfold is_char_filter_pos at gl; obtain ⟨u1, c, u2, gl⟩:= gl
   have : byteSize s = byteSize u1 + Char.utf8Size c + byteSize u2:= by
     rw[gl.left]; simp only [List.append_assoc, singleton_append, byteSize_concat, byteSize_cons]; omega
   omega
 
 
-def rfind (s: Str) (p: Pattern) : Option Nat := match p with
+def rfind (s: Str) (P: Pattern) : Option Nat := match P with
   | Pattern.SingleChar c => rfind_char_filter s (fun x => x = c)
   | Pattern.ListChar l => rfind_char_filter s (fun x => x ∈ l)
   | Pattern.FilterFunction f => rfind_char_filter s f
-  | Pattern.WholeString s1 => rfind_substring s s1
+  | Pattern.WholeString ss => rfind_substring s ss
+
 
 /-
 Useful definitions for stating the soundness theorem of functions in "split" family
 Not in Rust library
 -/
-def charpos_to_pos (s: Str) (cp: Nat)  :=
-  if cp = 0 then 0 else match s with
+def charpos_to_pos (s: Str) (i: Nat)  :=
+  if i = 0 then 0 else match s with
   | [] => 0
-  | h::t => (Char.utf8Size h) + charpos_to_pos t (cp-1)
+  | h::t => (Char.utf8Size h) + charpos_to_pos t (i-1)
 
-def charpos_to_pos_def (s: Str) (cp: Nat)  := byteSize (s.take cp)
+def charpos_to_pos_def (s: Str) (i: Nat)  := byteSize (s.take i)
 
-theorem charpos_to_pos_EQ: charpos_to_pos s cp  = charpos_to_pos_def s cp  :=by
-  induction s generalizing cp
+theorem charpos_to_pos_EQ: charpos_to_pos s i  = charpos_to_pos_def s i  :=by
+  induction s generalizing i
   unfold charpos_to_pos charpos_to_pos_def take
   split; rename_i gh; simp only [gh, byteSize];
   simp only; split; simp only [byteSize]; simp only [byteSize];
@@ -1743,26 +1771,26 @@ theorem charpos_to_pos_EQ: charpos_to_pos s cp  = charpos_to_pos_def s cp  :=by
   simp only [succ_eq_add_one, add_tsub_cancel_right, add_right_inj]
   rw[@ind n, charpos_to_pos_def]
 
---return the first char position of s1 in s if s1 is a substring of s, return none otherwise
-def substring_charpos_aux (s: Str) (s1: Str) (p: Nat): Option Nat:= match s, s1 with
-  | _ , [] => some p
+--return the first char position of ss in s if ss is a substring of s, return none otherwise
+def substring_charpos_aux (s: Str) (ss: Str) (i: Nat): Option Nat:= match s, ss with
+  | _ , [] => some i
   | [], _ => none
-  | _::ts, _ => if List.isPrefixOf s1 s then p else substring_charpos_aux ts s1 (p + 1)
+  | _::ts, _ => if List.isPrefixOf ss s then i else substring_charpos_aux ts ss (i + 1)
 
-def substring_charpos (s: Str) (s1: Str) := substring_charpos_aux s s1 0
+def substring_charpos (s: Str) (ss: Str) := substring_charpos_aux s ss 0
 
-def is_substringcharpos (s: Str) (s1: Str) (p: Nat):= ∃ s0 s2, (s = s0 ++ s1 ++ s2) ∧ (length s0 = p)
+def is_substringcharpos (s: Str) (ss: Str) (i: Nat):= ∃ s0 s2, (s = s0 ++ ss ++ s2) ∧ (length s0 = i)
 
-def is_first_substringcharpos (s: Str) (s1: Str) (p: Nat) := (is_substringcharpos s s1 p) ∧ (∀ p1, is_substringcharpos s s1 p1 → p1 ≥ p)
+def is_first_substringcharpos (s: Str) (ss: Str) (i: Nat) := (is_substringcharpos s ss i) ∧ (∀ j, is_substringcharpos s ss j → j ≥ i)
 
-lemma sub_substring_charpos_none_sound:  substring_charpos_aux s s1 l = none →  ¬ contains_substring s s1 :=by
-  induction s generalizing s1 l
-  cases s1; simp only [substring_charpos, substring_charpos_aux, not_false_eq_true, not_sym,
+lemma sub_substring_charpos_none_sound:  substring_charpos_aux s ss l = none →  ¬ contains_substring s ss :=by
+  induction s generalizing ss l
+  cases ss; simp only [substring_charpos, substring_charpos_aux, not_false_eq_true, not_sym,
     Bool.not_eq_true, IsEmpty.forall_iff]
   simp only [substring_charpos, substring_charpos_aux, Bool.not_eq_true, forall_true_left]
   simp only [contains_substring, not_false_eq_true, not_sym, IsEmpty.forall_iff]
   rename_i h t ind
-  cases s1; simp only [find_substring, substring_charpos_aux, not_false_eq_true, not_sym,
+  cases ss; simp only [find_substring, substring_charpos_aux, not_false_eq_true, not_sym,
     Bool.not_eq_true, IsEmpty.forall_iff]
   rename_i hs1 ts1
   simp only [substring_charpos, substring_charpos_aux, zero_add, Bool.not_eq_true]
@@ -1770,17 +1798,17 @@ lemma sub_substring_charpos_none_sound:  substring_charpos_aux s s1 l = none →
   intro gs; rename_i gl; simp only [contains_substring, gl, not_false_eq_true, not_sym, ↓reduceIte]
   have gs:= ind gs; simp only [Bool.not_eq_true] at gs; exact gs
 
-lemma substring_charpos_none_sound:  substring_charpos s s1 = none →  ¬ contains_substring s s1 :=by
+lemma substring_charpos_none_sound:  substring_charpos s ss = none →  ¬ contains_substring s ss :=by
   unfold substring_charpos; apply sub_substring_charpos_none_sound
 
-lemma sub_substring_charpos_some_sound10 (gxk: x ≤ k): substring_charpos_aux s s1 k = some p → substring_charpos_aux s s1 (k-x)= some (p-x) :=by
+lemma sub_substring_charpos_some_sound10 (gxk: x ≤ k): substring_charpos_aux s ss k = some i → substring_charpos_aux s ss (k-x)= some (i-x) :=by
   induction s generalizing k
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [substring_charpos_aux, Option.some.injEq, find_substring]
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [substring_charpos_aux, not_false_eq_true, not_sym, find_substring, IsEmpty.forall_iff]
   rename_i h t ind
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [substring_charpos_aux, Option.some.injEq, find_substring];
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [substring_charpos_aux, find_substring, zero_add]
@@ -1791,14 +1819,14 @@ lemma sub_substring_charpos_some_sound10 (gxk: x ≤ k): substring_charpos_aux s
   have : k + 1 - x = k - x + 1 := by omega
   rw[this] at g1; exact g1
 
-lemma sub_substring_charpos_some_sound_mpr: substring_charpos_aux s s1 k = some p → substring_charpos_aux s s1 (k+x)= some (p+x) :=by
+lemma sub_substring_charpos_some_sound_mpr: substring_charpos_aux s ss k = some i → substring_charpos_aux s ss (k+x)= some (i+x) :=by
   induction s generalizing k
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [substring_charpos_aux, Option.some.injEq, find_substring]
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [substring_charpos_aux, not_false_eq_true, not_sym, find_substring, IsEmpty.forall_iff]
   rename_i h t ind
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [substring_charpos_aux, Option.some.injEq, find_substring];
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [substring_charpos_aux, find_substring, zero_add]
@@ -1808,44 +1836,44 @@ lemma sub_substring_charpos_some_sound_mpr: substring_charpos_aux s s1 k = some 
   rw[this, g1]
 
 
-lemma sub_substring_charpos_some_sound1 : substring_charpos_aux s s1 k = some p → substring_charpos s s1= some (p-k):= by
+lemma sub_substring_charpos_some_sound1 : substring_charpos_aux s ss k = some i → substring_charpos s ss= some (i-k):= by
   unfold substring_charpos;
   have : 0 = k - k := by simp only [ge_iff_le, le_refl, tsub_eq_zero_of_le] ;
   rw[this]; apply sub_substring_charpos_some_sound10; simp only [le_refl]
 
-lemma sub_substring_charpos_some_sound2: substring_charpos_aux s s1 k = some p → p ≥ k := by
+lemma sub_substring_charpos_some_sound2: substring_charpos_aux s ss k = some i → i ≥ k := by
   induction s generalizing k
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [substring_charpos_aux, Option.some.injEq, find_substring]
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [substring_charpos_aux, not_false_eq_true, not_sym, find_substring, IsEmpty.forall_iff]
   rename_i h t ind
-  by_cases (s1=[]); rename_i gs1; rw[gs1]
+  by_cases (ss=[]); rename_i gss; rw[gss]
   simp only [substring_charpos_aux, Option.some.injEq, find_substring];
   intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [substring_charpos_aux, find_substring, zero_add]
   split; simp only [Option.some.injEq]; intro gk; simp only [gk, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   intro g1; have g1:= ind g1 ; linarith
 
-theorem substring_charpos_some_sound: substring_charpos s s1 = some p ↔  is_first_substringcharpos s s1 p :=by
+theorem substring_charpos_some_sound: substring_charpos s ss = some i ↔  is_first_substringcharpos s ss i :=by
   constructor
-  induction s generalizing p
-  cases s1; simp only [substring_charpos, substring_charpos_aux, Option.some.injEq];
+  induction s generalizing i
+  cases ss; simp only [substring_charpos, substring_charpos_aux, Option.some.injEq];
   intro gs; rw[← gs]; unfold is_first_substringcharpos is_substringcharpos
   simp only [List.append_nil, nil_eq_append, exists_and_right, exists_eq_right, exists_eq_left,
     length_nil, ge_iff_le, _root_.zero_le, implies_true, forall_const, and_self]
   simp only [substring_charpos, substring_charpos_aux, not_false_eq_true, not_sym, is_first_substringcharpos,
     ge_iff_le, IsEmpty.forall_iff]
   rename_i h t ind
-  by_cases (s1 = []); rename_i gs1
-  simp only [substring_charpos, gs1, substring_charpos_aux, Option.some.injEq];
+  by_cases (ss = []); rename_i gss
+  simp only [substring_charpos, gss, substring_charpos_aux, Option.some.injEq];
   intro gs; rw[← gs]; unfold is_first_substringcharpos is_substringcharpos
   simp only [List.append_nil, byteSize, exists_and_right, ge_iff_le, _root_.zero_le,
     forall_exists_index, and_imp, implies_true, forall_const, and_true]
   use []; simp only [List.nil_append, exists_eq', length_nil, and_self]
-  rename_i gs1; simp only [substring_charpos, substring_charpos_aux, zero_add]
+  rename_i gss; simp only [substring_charpos, substring_charpos_aux, zero_add]
   split; simp only [Option.some.injEq]
-  intro gp; rw[← gp]; unfold is_first_substringcharpos is_substringcharpos
+  intro gi; rw[← gi]; unfold is_first_substringcharpos is_substringcharpos
   simp only [List.append_assoc, byteSize, exists_and_right, ge_iff_le, _root_.zero_le,
     forall_exists_index, and_imp, implies_true, forall_const, and_true]
   use []; simp only [List.nil_append, byteSize_aux, and_true]
@@ -1858,21 +1886,21 @@ theorem substring_charpos_some_sound: substring_charpos s s1 = some p ↔  is_fi
   obtain ⟨s0, s2, gsl⟩ := gs.left
   use h::s0, s2; simp only [gsl, List.append_assoc, cons_append, length_cons, true_and]
   rename_i gs0; have gs0:= sub_substring_charpos_some_sound2 gs0; omega
-  intro p1 gp1;  obtain ⟨s0, s2, gsl⟩ := gs.left; obtain ⟨s00, s22, g02⟩ := gp1
-  have gsr:= gs.right (p1-1)
+  intro j gj;  obtain ⟨s0, s2, gsl⟩ := gs.left; obtain ⟨s00, s22, g02⟩ := gj
+  have gsr:= gs.right (j-1)
   cases s00; rename_i gl _; rw[IsPrefix_isPrefixOf_EQ] at gl
-  have : List.IsPrefix s1 (h::t) := by simp only [g02, List.nil_append, prefix_append]
+  have : List.IsPrefix ss (h::t) := by simp only [g02, List.nil_append, prefix_append]
   contradiction
   rename_i hs0 ts0;
   simp only [cons_append, List.append_assoc, cons.injEq, length_cons] at g02
-  have: ∃ s0 s2, t = s0 ++ s1 ++ s2 ∧ s0.length = p1 - 1 := by
+  have: ∃ s0 s2, t = s0 ++ ss ++ s2 ∧ s0.length = j - 1 := by
     use ts0, s22; simp only [g02, List.append_assoc, byteSize, true_and]
     omega
   have gsr:= gsr this ; omega
   --mpr
-  induction s generalizing p
+  induction s generalizing i
   intro g; unfold substring_charpos substring_charpos_aux
-  cases s1; simp only [Option.some.injEq]; unfold is_first_substringcharpos is_substringcharpos at g
+  cases ss; simp only [Option.some.injEq]; unfold is_first_substringcharpos is_substringcharpos at g
   obtain ⟨u1, u2, gu⟩ := g.left
   simp only [List.append_nil, nil_eq_append] at gu; rw[gu.left.left] at gu
   simp only [true_and, length_nil] at gu; exact gu.right
@@ -1884,7 +1912,7 @@ theorem substring_charpos_some_sound: substring_charpos s s1 = some p ↔  is_fi
   intro g; unfold is_first_substringcharpos is_substringcharpos at g
   obtain ⟨u1, u2, gu⟩ := g.left; have g:= g.right
   unfold substring_charpos substring_charpos_aux
-  cases s1; simp only [Option.some.injEq]
+  cases ss; simp only [Option.some.injEq]
   have : ∃ s0 s2, h :: t = s0 ++ [] ++ s2 ∧ s0.length = 0:= by
     use [], h::t; simp only [List.append_nil, List.nil_append, length_nil, and_self]
   have g:= g 0 this; omega
@@ -1894,7 +1922,7 @@ theorem substring_charpos_some_sound: substring_charpos s s1 = some p ↔  is_fi
   have : ∃ s0 s2, h :: t = s0 ++ hs1 :: ts1 ++ s2 ∧ s0.length = 0 :=by
     use [], t1; simp only [List.nil_append, gx, length_nil, and_self]
   have g:= g 0 this; simp only [Option.some.injEq] ; omega
-  have: is_first_substringcharpos t (hs1 :: ts1) (p-1) := by
+  have: is_first_substringcharpos t (hs1 :: ts1) (i-1) := by
     unfold is_first_substringcharpos is_substringcharpos
     constructor
     cases u1; simp only [List.nil_append, cons_append, cons.injEq, length_nil] at gu
@@ -1903,54 +1931,54 @@ theorem substring_charpos_some_sound: substring_charpos s s1 = some p ↔  is_fi
     have gc:= IsPrefix_isPrefixOf_EQ.mpr gc; contradiction
     rename_i hu1 tu1; simp only [cons_append, List.append_assoc, cons.injEq, length_cons] at gu
     use tu1, u2; simp only [gu, List.append_assoc, cons_append, true_and]; omega
-    intro p0 gp0; obtain ⟨v0, v2, gv⟩:=gp0
-    have : ∃ s0 s2, h :: t = s0 ++ hs1 :: ts1 ++ s2 ∧ s0.length = p0 + 1 := by
+    intro i0 gi0; obtain ⟨v0, v2, gv⟩:=gi0
+    have : ∃ s0 s2, h :: t = s0 ++ hs1 :: ts1 ++ s2 ∧ s0.length = i0 + 1 := by
       use h::v0, v2; simp only [gv, List.append_assoc, cons_append, length_cons, and_self]
-    have g:= g (p0+1) this; omega
+    have g:= g (i0+1) this; omega
   have ind:= ind this; unfold substring_charpos at ind
-  have ind: substring_charpos_aux t (hs1 :: ts1) (0+1) = some (p - 1 + 1 ):= sub_substring_charpos_some_sound_mpr ind
+  have ind: substring_charpos_aux t (hs1 :: ts1) (0+1) = some (i - 1 + 1 ):= sub_substring_charpos_some_sound_mpr ind
   simp only [zero_add] at ind;
-  have : p > 0 := by
+  have : i > 0 := by
     cases u1; simp only [List.nil_append, cons_append, cons.injEq, length_nil] at gu
     have gc: List.IsPrefix (hs1 :: ts1) (h :: t) := by
       unfold List.IsPrefix; use u2; simp only [cons_append, gu]
     have gc:= IsPrefix_isPrefixOf_EQ.mpr gc; contradiction
     simp only [cons_append, List.append_assoc, cons.injEq, length_cons] at gu; omega
-  have : p = p - 1 + 1:= by omega
+  have : i = i - 1 + 1:= by omega
   rw[this, ind]
 
-lemma substring_charpos_of_nil: s1.length > 0 → substring_charpos [] s1 = none :=by
+lemma substring_charpos_of_nil: ss.length > 0 → substring_charpos [] ss = none :=by
   intro g; unfold substring_charpos substring_charpos_aux
-  cases s1; simp only [length_nil, gt_iff_lt, lt_self_iff_false] at g
+  cases ss; simp only [length_nil, gt_iff_lt, lt_self_iff_false] at g
   simp only
 
-lemma exists_first_substring_charpos: (∃ p, is_substringcharpos s s1 p) → ∃ p, is_first_substringcharpos s s1 p :=by
+lemma exists_first_substring_charpos: (∃ i, is_substringcharpos s ss i) → ∃ i, is_first_substringcharpos s ss i :=by
   unfold is_first_substringcharpos; exact exists_minima_prop_nat
 
-lemma substring_charpos_aux_para1_sub (g: substring_charpos_aux s s1 p = some k) (gx: x ≤ p): substring_charpos_aux s s1 (p-x)= some (k-x) :=by
-  induction s generalizing p x
-  cases s1; unfold substring_charpos_aux at g; simp only [Option.some.injEq] at g
+lemma substring_charpos_aux_para1_sub (g: substring_charpos_aux s ss i = some k) (gx: x ≤ i): substring_charpos_aux s ss (i-x)= some (k-x) :=by
+  induction s generalizing i x
+  cases ss; unfold substring_charpos_aux at g; simp only [Option.some.injEq] at g
   unfold substring_charpos_aux;
   simp only [g, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   simp only [substring_charpos_aux, not_false_eq_true, not_sym] at g
   rename_i h t ind
-  cases s1; simp only [substring_charpos_aux, Option.some.injEq] at g
+  cases ss; simp only [substring_charpos_aux, Option.some.injEq] at g
   simp only [substring_charpos, substring_charpos_aux, g, ge_iff_le, le_refl, tsub_eq_zero_of_le]
   rename_i h1 t1
   unfold substring_charpos_aux at g; split at g; simp only [Option.some.injEq] at g
   rename_i g1; unfold substring_charpos_aux;
   simp only [g1, ↓reduceIte, g, ge_iff_le, le_refl, tsub_eq_zero_of_le]
-  have g: substring_charpos_aux t (h1 :: t1) (p + 1 - x) = some (k - x) :=by apply ind g; linarith
+  have g: substring_charpos_aux t (h1 :: t1) (i + 1 - x) = some (k - x) :=by apply ind g; linarith
   unfold substring_charpos_aux; rename_i g1 _; simp only [add_tsub_cancel_left] at g
   simp only [g1, not_false_eq_true, not_sym, ↓reduceIte, zero_add]
-  have : p + 1 - x = p - x + 1 :=by omega
+  have : i + 1 - x = i - x + 1 :=by omega
   rw [← this, g]
 
-lemma substring_charpos_terminate (t: substring_charpos s s1 = some p) (h1: s1.length > 0 ): s.length - (p + s1.length) < s.length:= by
-  induction s generalizing p;
-  cases s1; simp only [length_nil, gt_iff_lt, lt_self_iff_false] at h1
+lemma substring_charpos_terminate (t: substring_charpos s ss = some i) (h1: ss.length > 0 ): s.length - (i + ss.length) < s.length:= by
+  induction s generalizing i;
+  cases ss; simp only [length_nil, gt_iff_lt, lt_self_iff_false] at h1
   unfold substring_charpos substring_charpos_aux at t; simp only [Option.some.injEq] at t;
-  cases s1; simp only [length_nil, gt_iff_lt, lt_self_iff_false] at h1
+  cases ss; simp only [length_nil, gt_iff_lt, lt_self_iff_false] at h1
   unfold substring_charpos substring_charpos_aux at t; split at t
   rename_i h0; have h0:= prefix_length_le (IsPrefix_isPrefixOf_EQ.mp h0); simp only [Option.some.injEq] at t
   rw[← t]; simp only [length_cons, zero_add, succ_sub_succ_eq_sub, gt_iff_lt]
@@ -1959,11 +1987,11 @@ lemma substring_charpos_terminate (t: substring_charpos s s1 = some p) (h1: s1.l
   have: v.length < succ v.length :=by linarith
   linarith
   rename_i h v g1 t1 ind hx
-  have e1: substring_charpos_aux v (g1 :: t1) (0 + 1 -1) = some (p-1) :=by apply substring_charpos_aux_para1_sub t; linarith
+  have e1: substring_charpos_aux v (g1 :: t1) (0 + 1 -1) = some (i-1) :=by apply substring_charpos_aux_para1_sub t; linarith
   simp only [zero_add, ge_iff_le, le_refl, tsub_eq_zero_of_le] at e1
   rw[← substring_charpos] at e1; have _:= ind e1 ; simp only [length_cons, gt_iff_lt] ; omega
 
-lemma not_contain_substring_until_substring_charpos (gs1: s1.length > 0) : substring_charpos s s1 = some p → ¬ contains_substring (List.take p s) s1 = true := by
+lemma not_contain_substring_until_substring_charpos (gss: ss.length > 0) : substring_charpos s ss = some i → ¬ contains_substring (List.take i s) ss = true := by
   intro g; have g:= substring_charpos_some_sound.mp g
   rw[contains_substring_EQ]; unfold contains_substring_def
   unfold is_first_substringcharpos at g
@@ -1972,14 +2000,15 @@ lemma not_contain_substring_until_substring_charpos (gs1: s1.length > 0) : subst
   have gr:= g.right ; have gl:=g.left
   obtain ⟨v1, v2, gv⟩ := gl
   have gr:= gr (u1.length)
-  have: ∃ s0 s2, s = s0 ++ s1 ++ s2 ∧ s0.length = u1.length :=by
-    use u1, u2 ++ s.drop p
-    have : s = s.take p ++ s.drop p :=by simp only [take_append_drop]
+  have: ∃ s0 s2, s = s0 ++ ss ++ s2 ∧ s0.length = u1.length :=by
+    use u1, u2 ++ s.drop i
+    have : s = s.take i ++ s.drop i :=by simp only [take_append_drop]
     rw(config:={occs:=.pos [1]})[this]; rw[gc]; simp only [List.append_assoc, and_self]
   have gr:= gr this
-  have : length (List.take p s) = u1.length + s1.length + u2.length :=by
+  have : length (List.take i s) = u1.length + ss.length + u2.length :=by
     simp only [gc, List.append_assoc, length_append]; linarith
   simp only [length_take] at this; omega
+
 
 
 def list_char_filter_charpos_aux (s: Str) (f: Char → Bool) (curpos : Nat) : List Nat :=  match s with
@@ -2028,26 +2057,26 @@ lemma list_char_filter_charpos_aux_para1_elim_mpr : list_char_filter_charpos_aux
   have:  list_char_filter_charpos s f =  List.map (fun x=> x-a) (list_char_filter_charpos_aux s f a) := list_char_filter_charpos_aux_para1_elim
   rw[this, map_sub_add]; intro m gm; exact list_char_filter_charpos_aux_ge gm
 
-theorem list_char_filter_charpos_sound : p ∈ list_char_filter_charpos s f ↔ (∃ m, s.get? p = some m ∧ f m) :=by
-  induction s generalizing p
+theorem list_char_filter_charpos_sound : i ∈ list_char_filter_charpos s f ↔ (∃ m, s.get? i = some m ∧ f m) :=by
+  induction s generalizing i
   unfold list_char_filter_charpos list_char_filter_charpos_aux;
   simp only [not_mem_nil, get?_nil, not_false_eq_true, not_sym, false_and, exists_const]
   rename_i h t ind
   constructor
   simp only [list_char_filter_charpos, list_char_filter_charpos_aux, zero_add]
-  intro gp; split at gp
-  simp only [mem_cons] at gp ; cases gp; rename_i gp gf; simp only [gf, get?_cons_zero, Option.some.injEq, exists_eq_left', gp]
-  rename_i gp; rw[list_char_filter_charpos_aux_para1_elim_mpr] at gp
-  simp only [mem_map] at gp; obtain ⟨a, ga⟩:= gp;
+  intro gi; split at gi
+  simp only [mem_cons] at gi ; cases gi; rename_i gi gf; simp only [gf, get?_cons_zero, Option.some.injEq, exists_eq_left', gi]
+  rename_i gi; rw[list_char_filter_charpos_aux_para1_elim_mpr] at gi
+  simp only [mem_map] at gi; obtain ⟨a, ga⟩:= gi;
   have ind:= ind.mp ga.left; obtain ⟨m, gm⟩:=ind;
   use m; rw[← ga.right]; simp only [get?_cons_succ, gm, and_self]
-  rw[list_char_filter_charpos_aux_para1_elim_mpr] at gp
-  simp only [mem_map] at gp; obtain ⟨a, ga⟩:= gp;
+  rw[list_char_filter_charpos_aux_para1_elim_mpr] at gi
+  simp only [mem_map] at gi; obtain ⟨a, ga⟩:= gi;
   have ind:= ind.mp ga.left; obtain ⟨m, gm⟩:=ind;
   use m; rw[← ga.right]; simp only [get?_cons_succ, gm, and_self]
   --mpr
   intro gm; obtain ⟨m, gm⟩:=gm;
-  cases p; simp only [zero_eq, get?_cons_zero, Option.some.injEq] at gm
+  cases i; simp only [zero_eq, get?_cons_zero, Option.some.injEq] at gm
   unfold list_char_filter_charpos list_char_filter_charpos_aux; rw[gm.left, gm.right]
   simp only [zero_eq, ↓reduceIte, zero_add, mem_cons, true_or]
   rename_i n; simp only [get?_cons_succ] at gm
@@ -2066,7 +2095,7 @@ def list_substring_charpos_aux (s: Str) (ss: Str) (curpos : Nat) : List Nat :=
   if _h : ss.length > 0 then
     match _t: substring_charpos s ss with
       | none => []
-      | some p => (curpos + p) :: list_substring_charpos_aux (s.drop (p + ss.length)) ss (curpos + p + ss.length)
+      | some i => (curpos + i) :: list_substring_charpos_aux (s.drop (i + ss.length)) ss (curpos + i + ss.length)
   else list_nat_zero_to s.length
 termination_by length s
 decreasing_by simp_wf; have:= substring_charpos_terminate _t _h; simp only [_h, or_true, and_true, gt_iff_lt]; omega
@@ -2074,102 +2103,103 @@ decreasing_by simp_wf; have:= substring_charpos_terminate _t _h; simp only [_h, 
 
 def list_substring_charpos (s: Str) (ss: Str) := list_substring_charpos_aux s ss 0
 
-lemma list_substring_charpos_aux_ge (gs1: s1.length > 0) : v ∈ list_substring_charpos_aux s s1 k →  v ≥ k :=by
+lemma list_substring_charpos_aux_ge (gss: ss.length > 0) : v ∈ list_substring_charpos_aux s ss k →  v ≥ k :=by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s k
   rename_i n ind
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs];
   unfold list_substring_charpos_aux;
-  have: substring_charpos [] s1 = none := substring_charpos_of_nil gs1
-  rw[this]; simp only [gt_iff_lt, gs1, ↓reduceDIte, not_mem_nil, ge_iff_le, IsEmpty.forall_iff]
+  have: substring_charpos [] ss = none := substring_charpos_of_nil gss
+  rw[this]; simp only [gt_iff_lt, gss, ↓reduceDIte, not_mem_nil, ge_iff_le, IsEmpty.forall_iff]
   unfold list_substring_charpos_aux
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, ge_iff_le]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, ge_iff_le]
   split; simp only [not_mem_nil, IsEmpty.forall_iff]
-  rename_i p _; simp only [mem_cons]; intro gv
+  rename_i i _; simp only [mem_cons]; intro gv
   cases gv; omega; rename_i gv
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n := by
     rw[← gm, ← gl] ; simp only [length_drop]; omega
   have ind:=ind m id1 gm gv ; omega
 
-lemma list_substring_charpos_aux_para1_add (gs1: s1.length > 0)
-      :list_substring_charpos_aux s s1 (a+b) =  List.map (fun x=> x+a) (list_substring_charpos_aux s s1 b) :=by
+lemma list_substring_charpos_aux_para1_add (gss: ss.length > 0)
+      :list_substring_charpos_aux s ss (a+b) =  List.map (fun x=> x+a) (list_substring_charpos_aux s ss b) :=by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s a b
   rename_i n ind
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs];
   unfold list_substring_charpos_aux
-  have: substring_charpos [] s1 = none := substring_charpos_of_nil gs1
-  rw[this]; simp only [gt_iff_lt, gs1, ↓reduceDIte, map_nil]
-  unfold list_substring_charpos_aux; simp only [gt_iff_lt, gs1, ↓reduceDIte]
-  split ; simp only [map_nil]; rename_i p _
+  have: substring_charpos [] ss = none := substring_charpos_of_nil gss
+  rw[this]; simp only [gt_iff_lt, gss, ↓reduceDIte, map_nil]
+  unfold list_substring_charpos_aux; simp only [gt_iff_lt, gss, ↓reduceDIte]
+  split ; simp only [map_nil]; rename_i i _
   simp only [map_cons, cons.injEq]; constructor; omega
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n := by
     rw[← gm, ← gl] ; simp only [length_drop]; omega
-  have : a + b + p + s1.length = a + (b + p + s1.length) := by omega
+  have : a + b + i + ss.length = a + (b + i + ss.length) := by omega
   rw[this]; exact ind m id1 gm
 
-lemma list_substring_charpos_aux_para1_elim (gs1: s1.length > 0):
-    list_substring_charpos s s1 =  List.map (fun x=> x-a) (list_substring_charpos_aux s s1 a) :=by
+lemma list_substring_charpos_aux_para1_elim (gss: ss.length > 0):
+    list_substring_charpos s ss =  List.map (fun x=> x-a) (list_substring_charpos_aux s ss a) :=by
   unfold list_substring_charpos
   have: a = a + 0 :=by simp only [add_zero]
-  rw(config:={occs:=.pos [2]})[this]; rw[list_substring_charpos_aux_para1_add gs1, map_add_sub]
+  rw(config:={occs:=.pos [2]})[this]; rw[list_substring_charpos_aux_para1_add gss, map_add_sub]
 
-lemma list_substring_charpos_aux_para1_elim_mpr (gs1: s1.length > 0):
-    list_substring_charpos_aux s s1 a =  List.map (fun x=> x + a) (list_substring_charpos s s1) :=by
-  have: list_substring_charpos s s1 =  List.map (fun x=> x-a) (list_substring_charpos_aux s s1 a) := list_substring_charpos_aux_para1_elim gs1
-  rw[this, map_sub_add]; intro m gm; exact list_substring_charpos_aux_ge gs1 gm
+lemma list_substring_charpos_aux_para1_elim_mpr (gss: ss.length > 0):
+    list_substring_charpos_aux s ss a =  List.map (fun x=> x + a) (list_substring_charpos s ss) :=by
+  have: list_substring_charpos s ss =  List.map (fun x=> x-a) (list_substring_charpos_aux s ss a) := list_substring_charpos_aux_para1_elim gss
+  rw[this, map_sub_add]; intro m gm; exact list_substring_charpos_aux_ge gss gm
 
 --Did not find a good way to state the mpr direction in a non recursive way
-theorem list_substring_charpos_sound (gs1: s1.length >0): p ∈ list_substring_charpos s s1 →  List.IsPrefix s1 (s.drop p)  :=by
+theorem list_substring_charpos_sound (gss: ss.length >0): i ∈ list_substring_charpos s ss →  List.IsPrefix ss (s.drop i)  :=by
   generalize gl: s.length = l
-  induction l using Nat.strong_induction_on generalizing s p
+  induction l using Nat.strong_induction_on generalizing s i
   rename_i n ind
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs];
   unfold list_substring_charpos list_substring_charpos_aux
-  have: substring_charpos [] s1 = none := substring_charpos_of_nil gs1; rw[this]
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, not_mem_nil, drop_nil, prefix_nil, IsEmpty.forall_iff];
+  have: substring_charpos [] ss = none := substring_charpos_of_nil gss; rw[this]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, not_mem_nil, drop_nil, prefix_nil, IsEmpty.forall_iff];
   unfold list_substring_charpos list_substring_charpos_aux
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, zero_add]
-  intro gp; split at gp; simp only [not_mem_nil] at gp;
-  rename_i p0 gp0; rw[list_substring_charpos_aux_para1_elim_mpr gs1] at gp
-  simp only [mem_cons, mem_map] at gp
-  have gp0:= substring_charpos_some_sound.mp gp0
-  unfold is_first_substringcharpos at gp0;
-  have gp0:=gp0.left; unfold is_substringcharpos at gp0; obtain ⟨s0,s2,gp0⟩:=gp0
-  cases gp; rename_i gp; rw[gp];
-  rw[gp0.left, ← gp0.right]; simp only [List.append_assoc, drop_left, prefix_append]
-  generalize gm: (List.drop (p0 + s1.length) s).length = m
+  simp only [gt_iff_lt, gss, ↓reduceDIte, zero_add]
+  intro gi; split at gi; simp only [not_mem_nil] at gi;
+  rename_i i0 gi0; rw[list_substring_charpos_aux_para1_elim_mpr gss] at gi
+  simp only [mem_cons, mem_map] at gi
+  have gi0:= substring_charpos_some_sound.mp gi0
+  unfold is_first_substringcharpos at gi0;
+  have gi0:=gi0.left; unfold is_substringcharpos at gi0; obtain ⟨s0,s2,gi0⟩:=gi0
+  cases gi; rename_i gi; rw[gi];
+  rw[gi0.left, ← gi0.right]; simp only [List.append_assoc, drop_left, prefix_append]
+  generalize gm: (List.drop (i0 + ss.length) s).length = m
   have id1: m < n := by
     rw[← gm, ← gl] ; simp only [length_drop]; omega
   rename_i ga; obtain ⟨a, ga⟩:= ga
   have ind:=ind m id1 gm ga.left
-  rw[gp0.left, ← gp0.right] at ind; simp only [List.append_assoc, drop_drop] at ind
-  rw[← gp0.right] at ga; rw[ga.right] at ind
-  have: s0 ++ (s1 ++ s2) = s:= by simp only [gp0, List.append_assoc]
+  rw[gi0.left, ← gi0.right] at ind; simp only [List.append_assoc, drop_drop] at ind
+  rw[← gi0.right] at ga; rw[ga.right] at ind
+  have: s0 ++ (ss ++ s2) = s:= by simp only [gi0, List.append_assoc]
   rw[this] at ind ; exact ind
 
-def split_at_charpos_def (s: Str) (p: Nat) := (s.take p, s.drop p)
 
-def split_at_charpos (s: Str) (p: Nat): List Char × List Char  := match s with
+def split_at_charpos_def (s: Str) (i: Nat) := (s.take i, s.drop i)
+
+def split_at_charpos (s: Str) (i: Nat): List Char × List Char  := match s with
   | [] => ([], [])
-  | h::t => if p = 0 then ([], s) else  let l := split_at_charpos t (p-1)
+  | h::t => if i = 0 then ([], s) else  let l := split_at_charpos t (i-1)
             (h::(l.1), l.2)
 
-theorem split_at_charpos_EQ : split_at_charpos s p = split_at_charpos_def s p :=by
-  induction s generalizing p; simp only [split_at_charpos, split_at_charpos_def, take_nil, drop_nil]
+theorem split_at_charpos_EQ : split_at_charpos s i = split_at_charpos_def s i :=by
+  induction s generalizing i; simp only [split_at_charpos, split_at_charpos_def, take_nil, drop_nil]
   rename_i h t ind
   simp only [split_at_charpos, split_at_charpos_def]
-  split; rename_i gp; rw[gp]; simp only [zero_add, take_cons_succ, take_zero, drop_succ_cons,drop_zero]
+  split; rename_i gi; rw[gi]; simp only [zero_add, take_cons_succ, take_zero, drop_succ_cons,drop_zero]
   simp only [Prod.mk.injEq]; rw[ind]; unfold split_at_charpos_def
-  simp; cases p; contradiction;
+  simp; cases i; contradiction;
   simp only [succ_sub_succ_eq_sub, tsub_zero, take_cons_succ, drop_succ_cons, and_self]
 
-lemma split_at_charpos_merge: (split_at_charpos s p).1 ++ (split_at_charpos s p).2 = s := by
+lemma split_at_charpos_merge: (split_at_charpos s i).1 ++ (split_at_charpos s i).2 = s := by
   rw[split_at_charpos_EQ, split_at_charpos_def]; simp only [take_append_drop]
 
 
@@ -2300,7 +2330,7 @@ theorem split_at_charpos_list_sound : (sl = split_at_charpos_list s l gl)
   have id1: m < n:= by rw[← gll, ← gm]; simp only [length_map, length_cons, lt_succ_self]
   have id2: valid_split_charpos_list (List.map (fun x => x - h) t) (List.drop h s) :=by
     unfold valid_split_charpos_list; constructor; apply map_sub_monotone gl.left.right
-    intro i; simp only [mem_map, length_drop, forall_exists_index, and_imp]
+    intro j; simp only [mem_map, length_drop, forall_exists_index, and_imp]
     intro x gx1 gx2; have gx1:= g3 x gx1; omega
   generalize gss: (split_at_charpos_list (List.drop h s) (List.map (fun x => x - h) t)) id2 = ss; symm at gss
   have ind:= ((ind m id1 gm).mp gss).right
@@ -2411,93 +2441,95 @@ def list_substring_pos_aux (s: Str) (ss: Str) (curpos : Nat) : List Nat :=
   if _h : ss.length > 0 then
     match _t: substring_charpos s ss with
       | none => []
-      | some p => (curpos + (charpos_to_pos s p)) :: list_substring_pos_aux (s.drop (p + ss.length)) ss (curpos + (charpos_to_pos s p) + (byteSize ss))
+      | some i => (curpos + (charpos_to_pos s i)) :: list_substring_pos_aux (s.drop (i + ss.length)) ss (curpos + (charpos_to_pos s i) + (byteSize ss))
   else list_nat_zero_to s.length
 termination_by length s
 decreasing_by simp_wf; have:= substring_charpos_terminate _t _h; simp only [_h, or_true, and_true, gt_iff_lt, this]; omega
 
 def list_substring_pos (s: Str) (ss: Str) := list_substring_pos_aux s ss 0
 
-def list_substring_pos_def (s: Str) (s1: Str):= List.map (charpos_to_pos s) (list_substring_charpos s s1)
+def list_substring_pos_def (s: Str) (ss: Str):= List.map (charpos_to_pos s) (list_substring_charpos s ss)
 
-lemma list_substring_pos_aux_ge (gs1: s1.length > 0) : v ∈ list_substring_pos_aux s s1 k →  v ≥ k :=by
+lemma list_substring_pos_aux_ge (gss: ss.length > 0) : v ∈ list_substring_pos_aux s ss k →  v ≥ k :=by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s k
   rename_i n ind
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs];
   unfold list_substring_pos_aux;
-  have: substring_charpos [] s1 = none := substring_charpos_of_nil gs1
-  rw[this]; simp only [gt_iff_lt, gs1, ↓reduceDIte, not_mem_nil, ge_iff_le, IsEmpty.forall_iff]
+  have: substring_charpos [] ss = none := substring_charpos_of_nil gss
+  rw[this]; simp only [gt_iff_lt, gss, ↓reduceDIte, not_mem_nil, ge_iff_le, IsEmpty.forall_iff]
   unfold list_substring_pos_aux
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, ge_iff_le]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, ge_iff_le]
   split; simp only [not_mem_nil, IsEmpty.forall_iff]
-  rename_i p _; simp only [mem_cons]; intro gv
+  rename_i i _; simp only [mem_cons]; intro gv
   cases gv; omega; rename_i gv
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n := by
     rw[← gm, ← gl] ; simp only [length_drop]; omega
   have ind:=ind m id1 gm gv ; omega
 
-lemma list_substring_pos_aux_para1_add (gs1: s1.length > 0)
-      :list_substring_pos_aux s s1 (a+b) =  List.map (fun x=> x+a) (list_substring_pos_aux s s1 b) :=by
+lemma list_substring_pos_aux_para1_add (gss: ss.length > 0)
+      :list_substring_pos_aux s ss (a+b) =  List.map (fun x=> x+a) (list_substring_pos_aux s ss b) :=by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s a b
   rename_i n ind
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs];
   unfold list_substring_pos_aux
-  have: substring_charpos [] s1 = none := substring_charpos_of_nil gs1
-  rw[this]; simp only [gt_iff_lt, gs1, ↓reduceDIte, map_nil]
-  unfold list_substring_pos_aux; simp only [gt_iff_lt, gs1, ↓reduceDIte]
-  split ; simp only [map_nil]; rename_i p _
+  have: substring_charpos [] ss = none := substring_charpos_of_nil gss
+  rw[this]; simp only [gt_iff_lt, gss, ↓reduceDIte, map_nil]
+  unfold list_substring_pos_aux; simp only [gt_iff_lt, gss, ↓reduceDIte]
+  split ; simp only [map_nil]; rename_i i _
   simp only [map_cons, cons.injEq]; constructor; omega
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n := by rw[← gm, ← gl] ; simp only [length_drop]; omega
-  have : a + b + charpos_to_pos s p + byteSize s1 = a + (b + charpos_to_pos s p + byteSize s1) := by omega
+  have : a + b + charpos_to_pos s i + byteSize ss = a + (b + charpos_to_pos s i + byteSize ss) := by omega
   rw[this]; exact ind m id1 gm
 
-lemma list_substring_pos_aux_para1_elim (gs1: s1.length > 0):
-    list_substring_pos s s1 =  List.map (fun x=> x-a) (list_substring_pos_aux s s1 a) :=by
+lemma list_substring_pos_aux_para1_elim (gss: ss.length > 0):
+    list_substring_pos s ss =  List.map (fun x=> x-a) (list_substring_pos_aux s ss a) :=by
   unfold list_substring_pos
   have: a = a + 0 :=by simp only [add_zero]
-  rw(config:={occs:=.pos [2]})[this]; rw[list_substring_pos_aux_para1_add gs1, map_add_sub]
+  rw(config:={occs:=.pos [2]})[this]; rw[list_substring_pos_aux_para1_add gss, map_add_sub]
 
-lemma list_substring_pos_aux_para1_elim_mpr (gs1: s1.length > 0):
-    list_substring_pos_aux s s1 a =  List.map (fun x=> x + a) (list_substring_pos s s1) :=by
-  have: list_substring_pos s s1 =  List.map (fun x=> x-a) (list_substring_pos_aux s s1 a) := list_substring_pos_aux_para1_elim gs1
-  rw[this, map_sub_add]; intro m gm; exact list_substring_pos_aux_ge gs1 gm
+lemma list_substring_pos_aux_para1_elim_mpr (gss: ss.length > 0):
+    list_substring_pos_aux s ss a =  List.map (fun x=> x + a) (list_substring_pos s ss) :=by
+  have: list_substring_pos s ss =  List.map (fun x=> x-a) (list_substring_pos_aux s ss a) := list_substring_pos_aux_para1_elim gss
+  rw[this, map_sub_add]; intro m gm; exact list_substring_pos_aux_ge gss gm
 
-theorem list_substring_pos_EQ (gs1: s1.length>0): list_substring_pos s s1 = list_substring_pos_def s s1 :=by
+theorem list_substring_pos_EQ (gss: ss.length>0): list_substring_pos s ss = list_substring_pos_def s ss :=by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s
   rename_i n ind
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs];
   unfold list_substring_pos list_substring_pos_aux list_substring_pos_def list_substring_charpos list_substring_charpos_aux
-  have i1: substring_charpos [] s1 = none := substring_charpos_of_nil gs1
-  rw[i1]; simp only [gt_iff_lt, gs1, ↓reduceDIte, charpos_to_pos, ite_self, map_nil]
+  have i1: substring_charpos [] ss = none := substring_charpos_of_nil gss
+  rw[i1]; simp only [gt_iff_lt, gss, ↓reduceDIte, charpos_to_pos, ite_self, map_nil]
   unfold list_substring_pos list_substring_pos_aux list_substring_pos_def list_substring_charpos list_substring_charpos_aux
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, zero_add]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, zero_add]
   split; simp only [map_nil]
-  rename_i p gp;  simp only [map_cons, cons.injEq, true_and]
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  rename_i i gi;  simp only [map_cons, cons.injEq, true_and]
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n := by rw[← gm, ← gl] ; simp only [length_drop]; omega
   have ind:= ind m id1 gm
-  rw[list_substring_pos_aux_para1_elim_mpr gs1, list_substring_charpos_aux_para1_elim_mpr gs1, ind, list_substring_pos_def]
+  rw[list_substring_pos_aux_para1_elim_mpr gss, list_substring_charpos_aux_para1_elim_mpr gss, ind, list_substring_pos_def]
   simp only [map_map, map_inj_left, Function.comp_apply]
   intro m _ ; simp only [charpos_to_pos_EQ, charpos_to_pos_def]
-  have: (take p s) ++ s1 ++(take m (drop (p + length s1) s)) = take (m + (p + length s1)) s := by
-    have: m + (p + length s1) = (p + length s1) + m := by omega
+  have: (take i s) ++ ss ++(take m (drop (i + length ss) s)) = take (m + (i + length ss)) s := by
+    have: m + (i + length ss) = (i + length ss) + m := by omega
     rw[this, List.take_add, List.append_cancel_right_eq];
-    have gp:= substring_charpos_some_sound.mp gp
-    unfold is_first_substringcharpos at gp; have gp:=gp.left; unfold is_substringcharpos at gp
-    obtain⟨s0, s2, gp⟩:=gp
-    have i1: take p s = s0 := by rw[← gp.right]; apply prefix_eq_take; simp only [gp.left, append_assoc, prefix_append]
-    have i2: p + length s1 = (s0 ++ s1).length:= by simp only [length_append, gp.right]
-    have i2: take (p + length s1) s = s0 ++ s1 := by rw[i2]; apply prefix_eq_take; rw[gp.left, List.IsPrefix]; use s2
+    have gi:= substring_charpos_some_sound.mp gi
+    unfold is_first_substringcharpos at gi; have gi:=gi.left; unfold is_substringcharpos at gi
+    obtain⟨s0, s2, gi⟩:=gi
+    have i1: take i s = s0 := by rw[← gi.right]; apply prefix_eq_take; simp only [gi.left, append_assoc, prefix_append]
+    have i2: i + length ss = (s0 ++ ss).length:= by simp only [length_append, gi.right]
+    have i2: take (i + length ss) s = s0 ++ ss := by rw[i2]; apply prefix_eq_take; rw[gi.left, List.IsPrefix]; use s2
     rw[i1,i2]
   rw[← this]; simp only [append_assoc, byteSize_concat]; omega
+
+
 
 --#eval list_substring_charpos "abcccabccddab".data "ab".data
 
@@ -2730,17 +2762,17 @@ lemma split_inclusive_char_filter_aux_flatten:
   simp only [List.append_assoc, singleton_append]
 
 
-def split_inclusive_substring (s: Str) (s1: Str)  : List Str:=
-  if h: s1.length > 0 then
-    match _t: substring_charpos s s1 with
+def split_inclusive_substring (s: Str) (ss: Str)  : List Str:=
+  if h: ss.length > 0 then
+    match _t: substring_charpos s ss with
       | none =>  [s]
-      | some p => (s.take (p + s1.length)) :: split_inclusive_substring (s.drop (p + s1.length)) s1
+      | some i => (s.take (i + ss.length)) :: split_inclusive_substring (s.drop (i + ss.length)) ss
   else [[]] ++ List.map (fun c => [c]) s ++ [[]]
 termination_by length s
 decreasing_by simp_wf; have:= substring_charpos_terminate _t h; simp only [h, or_true, and_true, gt_iff_lt]; omega
 
 
-lemma split_inclusive_substring_def_valid: valid_split_charpos_list (List.map (fun x => x + s1.length) (list_substring_charpos s s1)) s :=by
+lemma split_inclusive_substring_def_valid: valid_split_charpos_list (List.map (fun x => x + ss.length) (list_substring_charpos s ss)) s :=by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s
   rename_i n ind
@@ -2748,8 +2780,8 @@ lemma split_inclusive_substring_def_valid: valid_split_charpos_list (List.map (f
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs];
   unfold list_substring_charpos list_substring_charpos_aux
-  split; rename_i gs1;
-  have i:= @substring_charpos_of_nil s1 gs1; rw[i];
+  split; rename_i gss;
+  have gk:= @substring_charpos_of_nil ss gss; rw[gk];
   simp only [valid_split_charpos_list, monotone,
     map_nil, not_mem_nil, length_nil, nonpos_iff_eq_zero, false_implies, implies_true, and_self]
   simp only [valid_split_charpos_list, monotone, list_nat_zero_to, list_nat_zero_to_aux, map_nil, not_mem_nil,
@@ -2757,25 +2789,25 @@ lemma split_inclusive_substring_def_valid: valid_split_charpos_list (List.map (f
   unfold list_substring_charpos list_substring_charpos_aux
   split; split
   simp only [monotone, map_nil, not_mem_nil, false_implies, implies_true, and_self]
-  rename_i p gp; simp only [monotone, zero_add, mem_map, forall_exists_index, and_imp,
+  rename_i i gi; simp only [monotone, zero_add, mem_map, forall_exists_index, and_imp,
     forall_apply_eq_imp_iff₂, add_le_add_iff_right, Bool.decide_and, Bool.decide_eq_true,
     Bool.and_eq_true, decide_eq_true_eq, map_cons, mem_cons, forall_eq_or_imp]
   rw[list_substring_charpos_aux_para1_elim_mpr (by assumption)]
-  generalize gm: (drop (p + length s1) s).length = m
+  generalize gm: (drop (i + length ss) s).length = m
   have id1: m < n :=by rw[← gm, ← gl]; simp only [length_drop, tsub_lt_self_iff, add_pos_iff]; omega
   have ind:= ind m id1 gm
   constructor; constructor
   simp only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   intro a _; omega
-  have i:= @map_add_monotone _ p ind.left; simp only [map_map, comp_add_right] at i
-  have : (fun x ↦ x + (length s1 + p)) = (fun x ↦ x + (p + length s1)) :=by ext x; omega
-  rw[this] at i
-  apply map_add_monotone i
+  have gk:= @map_add_monotone _ i ind.left; simp only [map_map, comp_add_right] at gk
+  have : (fun x ↦ x + (length ss + i)) = (fun x ↦ x + (i + length ss)) :=by ext x; omega
+  rw[this] at gk
+  apply map_add_monotone gk
   constructor
-  have: p + length s1 ≤ length s := by
-    have gp:= (substring_charpos_some_sound.mp gp).left
-    unfold is_substringcharpos at gp; obtain⟨s0, s2, gp⟩:= gp
-    have: s.length = s0.length + (s1.length + s2.length):= by simp only [gp.left, append_assoc, length_append]
+  have: i + length ss ≤ length s := by
+    have gi:= (substring_charpos_some_sound.mp gi).left
+    unfold is_substringcharpos at gi; obtain⟨s0, s2, gi⟩:= gi
+    have: s.length = s0.length + (ss.length + s2.length):= by simp only [gi.left, append_assoc, length_append]
     omega
   assumption
   simp only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
@@ -2784,47 +2816,47 @@ lemma split_inclusive_substring_def_valid: valid_split_charpos_list (List.map (f
   constructor
   apply map_add_monotone; exact list_nat_zero_to_monotone
   simp only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
-  have : length s1 = 0 := by omega
+  have : length ss = 0 := by omega
   simp only [this, add_zero]; exact list_nat_zero_to_le
 
 
-def split_inclusive_substring_def (s: Str) (s1: Str):=
-  split_at_charpos_list s (List.map (fun x => x + s1.length) (list_substring_charpos s s1)) split_inclusive_substring_def_valid
+def split_inclusive_substring_def (s: Str) (ss: Str):=
+  split_at_charpos_list s (List.map (fun x => x + ss.length) (list_substring_charpos s ss)) split_inclusive_substring_def_valid
 
-lemma split_inclusive_substring_ne_nil (gs1: s1.length > 0): split_inclusive_substring s s1 ≠ [] :=by
+lemma split_inclusive_substring_ne_nil (gss: ss.length > 0): split_inclusive_substring s ss ≠ [] :=by
   unfold split_inclusive_substring
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, List.nil_append, ne_eq]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, List.nil_append, ne_eq]
   split; simp only [not_false_eq_true, not_sym]
   simp only [singleton_append, not_false_eq_true, not_sym]
 
 
-lemma list_substring_charpos_aux_nil_of_substring_charpos_none (gs1: s1.length > 0):
-    substring_charpos s s1 = none → list_substring_charpos_aux s s1 c = [] :=by
+lemma list_substring_charpos_aux_nil_of_substring_charpos_none (gss: ss.length > 0):
+    substring_charpos s ss = none → list_substring_charpos_aux s ss c = [] :=by
   unfold list_substring_charpos_aux; intro g; rw[g]
-  simp only [gt_iff_lt, gs1, ↓reduceDIte]
+  simp only [gt_iff_lt, gss, ↓reduceDIte]
 
-lemma list_substring_charpos_nil_of_substring_charpos_none (gs1: s1.length > 0):
-    substring_charpos s s1 = none → list_substring_charpos s s1 = [] :=by
-  unfold list_substring_charpos; apply list_substring_charpos_aux_nil_of_substring_charpos_none gs1
+lemma list_substring_charpos_nil_of_substring_charpos_none (gss: ss.length > 0):
+    substring_charpos s ss = none → list_substring_charpos s ss = [] :=by
+  unfold list_substring_charpos; apply list_substring_charpos_aux_nil_of_substring_charpos_none gss
 
-lemma split_inclusive_substring_def_singleton_of_substring_charpos_none (gs1: s1.length > 0):
-    substring_charpos s s1 = none →  split_inclusive_substring_def s s1 = [s] :=by
-  intro g; have g:= list_substring_charpos_nil_of_substring_charpos_none gs1 g
+lemma split_inclusive_substring_def_singleton_of_substring_charpos_none (gss: ss.length > 0):
+    substring_charpos s ss = none →  split_inclusive_substring_def s ss = [s] :=by
+  intro g; have g:= list_substring_charpos_nil_of_substring_charpos_none gss g
   unfold split_inclusive_substring_def; simp only [g, map_nil]; unfold split_at_charpos_list
   simp only [split_at_charpos_list_aux]
 
-lemma split_inclusive_substring_def_aux_para1_elim (gs1: s1.length>0):
-      split_inclusive_substring_def s s1 = split_at_charpos_list_aux s (List.map (fun x=> x + s1.length) (list_substring_charpos_aux s s1 c)) c :=by
+lemma split_inclusive_substring_def_aux_para1_elim (gss: ss.length>0):
+      split_inclusive_substring_def s ss = split_at_charpos_list_aux s (List.map (fun x=> x + ss.length) (list_substring_charpos_aux s ss c)) c :=by
   unfold split_inclusive_substring_def split_at_charpos_list;
-  have e1: split_at_charpos_list_aux s (List.map (fun x => x + s1.length) (list_substring_charpos s s1)) 0 =
-        split_at_charpos_list_aux s (List.map (fun x => x +c) (List.map (fun x => x + s1.length) (list_substring_charpos s s1))) (0+c):= split_at_charpos_list_aux_para1_add
-  have e2: list_substring_charpos s s1 = (List.map (fun x => x - c) (list_substring_charpos_aux s s1 c)) := list_substring_charpos_aux_para1_elim gs1
-  have e3: (List.map (fun x => x + c) (List.map (fun x => x + s1.length) (List.map (fun x => x - c) (list_substring_charpos_aux s s1 c))))
-            = List.map (fun x => x + s1.length) (list_substring_charpos_aux s s1 c) := by
-    rw[map_add_comm, map_sub_add]; intro m gm; apply list_substring_charpos_aux_ge gs1 gm
+  have e1: split_at_charpos_list_aux s (List.map (fun x => x + ss.length) (list_substring_charpos s ss)) 0 =
+        split_at_charpos_list_aux s (List.map (fun x => x +c) (List.map (fun x => x + ss.length) (list_substring_charpos s ss))) (0+c):= split_at_charpos_list_aux_para1_add
+  have e2: list_substring_charpos s ss = (List.map (fun x => x - c) (list_substring_charpos_aux s ss c)) := list_substring_charpos_aux_para1_elim gss
+  have e3: (List.map (fun x => x + c) (List.map (fun x => x + ss.length) (List.map (fun x => x - c) (list_substring_charpos_aux s ss c))))
+            = List.map (fun x => x + ss.length) (list_substring_charpos_aux s ss c) := by
+    rw[map_add_comm, map_sub_add]; intro m gm; apply list_substring_charpos_aux_ge gss gm
   rw[e1, e2, e3]; simp only [zero_add]
 
-theorem split_inclusive_substring_EQ (gs1: s1.length > 0): split_inclusive_substring s s1 = split_inclusive_substring_def s s1 :=by
+theorem split_inclusive_substring_EQ (gss: ss.length > 0): split_inclusive_substring s ss = split_inclusive_substring_def s ss :=by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s
   rename_i n ind
@@ -2832,26 +2864,26 @@ theorem split_inclusive_substring_EQ (gs1: s1.length > 0): split_inclusive_subst
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs];
   unfold split_inclusive_substring split_inclusive_substring_def list_substring_charpos
   unfold list_substring_charpos_aux split_at_charpos_list split_at_charpos_list_aux
-  have : substring_charpos [] s1 = none := substring_charpos_of_nil gs1; rw[this]
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, map_nil]
-  unfold split_inclusive_substring; simp only [gt_iff_lt, gs1, ↓reduceDIte]
-  split; rename_i gf ; rw[split_inclusive_substring_def_singleton_of_substring_charpos_none gs1 gf]
-  rename_i p gp; unfold split_inclusive_substring_def list_substring_charpos list_substring_charpos_aux
-  simp only [gt_iff_lt, zero_add, dite_eq_ite]; simp only [gt_iff_lt, gs1, ↓reduceDIte, zero_add]
+  have : substring_charpos [] ss = none := substring_charpos_of_nil gss; rw[this]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, map_nil]
+  unfold split_inclusive_substring; simp only [gt_iff_lt, gss, ↓reduceDIte]
+  split; rename_i gf ; rw[split_inclusive_substring_def_singleton_of_substring_charpos_none gss gf]
+  rename_i i gi; unfold split_inclusive_substring_def list_substring_charpos list_substring_charpos_aux
+  simp only [gt_iff_lt, zero_add, dite_eq_ite]; simp only [gt_iff_lt, gss, ↓reduceDIte, zero_add]
   unfold split_at_charpos_list split_at_charpos_list_aux;
-  simp only [map_cons, tsub_zero, cons.injEq]; rw[gp]
+  simp only [map_cons, tsub_zero, cons.injEq]; rw[gi]
   simp only [↓reduceIte, map_cons, split_at_charpos_EQ, split_at_charpos_def, cons.injEq, true_and]
-  rw[← split_inclusive_substring_def_aux_para1_elim gs1]
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  rw[← split_inclusive_substring_def_aux_para1_elim gss]
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n := by
     rw[← gm, ← gl] ; simp only [length_drop]; omega
   exact ind m id1 gm
 
 
-lemma split_inclusive_substring_merge: flatten (split_inclusive_substring s s1) = s :=by
-  by_cases (s1.length > 0) ; rename_i gs1
-  rw[split_inclusive_substring_EQ gs1, split_inclusive_substring_def, split_at_charpos_list_merge]
-  have: s1.length = 0 := by omega
+lemma split_inclusive_substring_merge: flatten (split_inclusive_substring s ss) = s :=by
+  by_cases (ss.length > 0) ; rename_i gss
+  rw[split_inclusive_substring_EQ gss, split_inclusive_substring_def, split_at_charpos_list_merge]
+  have: ss.length = 0 := by omega
   unfold split_inclusive_substring;
   simp only [this, gt_iff_lt, lt_self_iff_false, ↓reduceDIte, singleton_append, cons_append]
   unfold flatten; simp only [List.nil_append, foldl_cons, append_eq, List.append_nil, foldl_append, foldl_nil]
@@ -2859,6 +2891,8 @@ lemma split_inclusive_substring_merge: flatten (split_inclusive_substring s s1) 
   rename_i h t ind
   simp only [map_cons, foldl_cons, append_eq, List.nil_append]
   rw[fold_append_para1_elim, ind]; simp only [singleton_append]
+
+
 
 /-
 Function: split
@@ -3022,27 +3056,27 @@ lemma split_inclusive_char_filter_split_char_filter_eq_length:
   exact split_inclusive_char_filter_aux_split_char_filter_aux_eq_length
 
 
-def split_substring (s: Str) (s1: Str)   : List Str:=
-  if h: s1.length > 0 then
-    match _t: substring_charpos s s1 with
+def split_substring (s: Str) (ss: Str)   : List Str:=
+  if h: ss.length > 0 then
+    match _t: substring_charpos s ss with
       | none => [s]
-      | some p => (s.take p)::split_substring (s.drop (p + s1.length)) s1
+      | some i => (s.take i)::split_substring (s.drop (i + ss.length)) ss
   else [[]] ++ List.map (fun c => [c]) s ++ [[]]
 termination_by length s
 decreasing_by simp_wf; have:= substring_charpos_terminate _t h; simp only [h, or_true, and_true, gt_iff_lt]; omega
 
 def drop_tail (s: Str) (n: Nat) := s.take (s.length - n)
 
-def split_substring_def (s: Str) (s1: Str) := let si := (split_inclusive_substring s s1)
-                  (List.map (fun x : Str => drop_tail x s1.length) si.dropLast) ++ si.drop (si.length - 1)
+def split_substring_def (s: Str) (ss: Str) := let si := (split_inclusive_substring s ss)
+                  (List.map (fun x : Str => drop_tail x ss.length) si.dropLast) ++ si.drop (si.length - 1)
 
-lemma split_substring_last (gs1: s1.length >0): ∃ l, (split_inclusive_substring s s1).drop ((split_inclusive_substring s s1).length - 1) = [l] :=by
-  generalize gu: (split_inclusive_substring s s1).drop ((split_inclusive_substring s s1).length - 1) = u
+lemma split_substring_last (gss: ss.length >0): ∃ l, (split_inclusive_substring s ss).drop ((split_inclusive_substring s ss).length - 1) = [l] :=by
+  generalize gu: (split_inclusive_substring s ss).drop ((split_inclusive_substring s ss).length - 1) = u
   have lu: u.length = 1 :=by
     rw[← gu]; simp only [length_drop]
-    have : ¬ (split_inclusive_substring s s1).length = 0 :=by
+    have : ¬ (split_inclusive_substring s ss).length = 0 :=by
       by_contra ; rename_i gc; have gc:= eq_nil_of_length_eq_zero gc
-      simp only [split_inclusive_substring_ne_nil gs1, not_false_eq_true, not_sym] at gc
+      simp only [split_inclusive_substring_ne_nil gss, not_false_eq_true, not_sym] at gc
     omega
   cases u; simp only [length_nil, zero_ne_one, not_false_eq_true, not_sym] at lu
   rename_i hu tu; simp only [length_cons, succ.injEq] at lu; have lu:= eq_nil_of_length_eq_zero lu
@@ -3060,62 +3094,62 @@ lemma sub_split_substring_sound1 : s = str_concat_pad (List.map (fun c => [c]) s
   simp only [gt]; simp only [singleton_append, cons.injEq, true_and]
   exact ind
 
-lemma split_substring_ne_nil (gs1: s1.length > 0): split_substring s s1≠ [] :=by
+lemma split_substring_ne_nil (gss: ss.length > 0): split_substring s ss ≠ [] :=by
   unfold split_substring
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, List.nil_append, ne_eq]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, List.nil_append, ne_eq]
   split; simp only [not_false_eq_true, not_sym]
   simp only [singleton_append, not_false_eq_true, not_sym]
 
 
-theorem split_substring_EQ (gs1: s1.length > 0): split_substring s s1 = split_substring_def s s1 := by
+theorem split_substring_EQ (gss: ss.length > 0): split_substring s ss = split_substring_def s ss := by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s
   rename_i n ind
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw[gs]
   unfold split_substring split_substring_def split_inclusive_substring
-  have : substring_charpos [] s1 = none := substring_charpos_of_nil gs1
-  rw[this]; simp only [gt_iff_lt, gs1, ↓reduceDIte, dropLast_single, map_nil, List.length_singleton,
+  have : substring_charpos [] ss = none := substring_charpos_of_nil gss
+  rw[this]; simp only [gt_iff_lt, gss, ↓reduceDIte, dropLast_single, map_nil, List.length_singleton,
     ge_iff_le, le_refl, tsub_eq_zero_of_le, drop_zero, List.nil_append]
   unfold split_substring split_substring_def split_inclusive_substring
-  simp only [gt_iff_lt, gs1, ↓reduceDIte]
+  simp only [gt_iff_lt, gss, ↓reduceDIte]
   split;
   simp only [dropLast_single, map_nil, List.length_singleton, ge_iff_le, le_refl,
     tsub_eq_zero_of_le, drop_zero, List.nil_append]
-  rename_i p gp
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  rename_i i gi
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n := by
     rw[← gm, ← gl]; simp only [length_drop]; omega
   have ind:=ind m id1 gm ;
-  have g1: split_inclusive_substring (List.drop (p + s1.length) s) s1 ≠ []:= split_inclusive_substring_ne_nil gs1
+  have g1: split_inclusive_substring (List.drop (i + ss.length) s) ss ≠ []:= split_inclusive_substring_ne_nil gss
   rw[ dropLast_cons_of_ne_nil g1]
   simp only [ind, map_cons, length_cons, succ_sub_succ_eq_sub, tsub_zero, cons_append, cons.injEq]
-  have gp:= substring_charpos_some_sound.mp gp; unfold is_first_substringcharpos at gp
-  have gp:= gp.left; unfold is_substringcharpos at gp; obtain⟨u1, u2, gp⟩ := gp
-  rw[gp.left, ← gp.right, drop_tail];
+  have gi:= substring_charpos_some_sound.mp gi; unfold is_first_substringcharpos at gi
+  have gi:= gi.left; unfold is_substringcharpos at gi; obtain⟨u1, u2, gi⟩ := gi
+  rw[gi.left, ← gi.right, drop_tail];
   simp only [List.append_assoc, take_left, length_take, length_append, ge_iff_le,
     add_le_add_iff_left, le_add_iff_nonneg_right, _root_.zero_le, min_eq_left,
     add_tsub_cancel_right]
-  have : List.take (u1.length + s1.length) (u1 ++ (s1 ++ u2)) = u1 ++ s1 := by
-    have i1: u1 ++ (s1 ++ u2) = u1 ++ s1 ++ u2:= by simp only [List.append_assoc]
-    have i2: (u1.length + s1.length) = (u1 ++ s1).length + 0 := by simp only [length_append, add_zero]
+  have : List.take (u1.length + ss.length) (u1 ++ (ss ++ u2)) = u1 ++ ss := by
+    have i1: u1 ++ (ss ++ u2) = u1 ++ ss ++ u2:= by simp only [List.append_assoc]
+    have i2: (u1.length + ss.length) = (u1 ++ ss).length + 0 := by simp only [length_append, add_zero]
     rw[i1, i2, List.take_append]; simp only [take_zero, List.append_nil]
   rw[this]; simp only [take_left, length_cons, succ_sub_succ_eq_sub, tsub_zero, true_and]
   unfold split_substring_def;
-  have: (split_inclusive_substring (List.drop (u1.length + s1.length) (u1 ++ (s1 ++ u2))) s1).length
-    = succ ((split_inclusive_substring (List.drop (u1.length + s1.length) (u1 ++ (s1 ++ u2))) s1).length -1) :=by
-    have : (split_inclusive_substring (List.drop (u1.length + s1.length) (u1 ++ (s1 ++ u2))) s1).length ≠ 0 :=by
+  have: (split_inclusive_substring (List.drop (u1.length + ss.length) (u1 ++ (ss ++ u2))) ss).length
+    = succ ((split_inclusive_substring (List.drop (u1.length + ss.length) (u1 ++ (ss ++ u2))) ss).length -1) :=by
+    have : (split_inclusive_substring (List.drop (u1.length + ss.length) (u1 ++ (ss ++ u2))) ss).length ≠ 0 :=by
       by_contra; rename_i gc; have gc:= eq_nil_of_length_eq_zero gc
-      have: ¬  split_inclusive_substring (List.drop (u1.length + s1.length) (u1 ++ (s1 ++ u2))) s1 = [] := by
-        apply split_inclusive_substring_ne_nil gs1
+      have: ¬  split_inclusive_substring (List.drop (u1.length + ss.length) (u1 ++ (ss ++ u2))) ss = [] := by
+        apply split_inclusive_substring_ne_nil gss
       contradiction
     omega
   rw[this] ; simp only [drop_succ_cons]
 
 
-/- the s1 =[] cases is implemented by definition-/
-theorem split_substring_reconstruct (g: sl = split_substring s s1) (gs1: s1.length > 0):
-    (s = str_concat_pad sl s1) ∧ (∀ sm ∈ sl, ¬ contains_substring sm s1) := by
+/- the ss =[] cases is implemented by definition-/
+theorem split_substring_reconstruct (g: sl = split_substring s ss) (gss: ss.length > 0):
+    (s = str_concat_pad sl ss) ∧ (∀ sm ∈ sl, ¬ contains_substring sm ss) := by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s sl
   rename_i n ind
@@ -3124,22 +3158,22 @@ theorem split_substring_reconstruct (g: sl = split_substring s s1) (gs1: s1.leng
   rw [gs] at g;
   unfold split_substring at g
   simp only [length_cons, gt_iff_lt, zero_lt_succ, ↓reduceDIte,  List.nil_append,
-    drop_nil,  take_nil, gs1] at g
+    drop_nil,  take_nil, gss] at g
   split at g; rw[g]; simp only [gs, str_concat_pad]
-  rename_i gss; have i1: substring_charpos [] s1 = none := substring_charpos_of_nil gs1
-  simp only [gss, not_false_eq_true, not_sym] at i1
+  rename_i gsk; have i1: substring_charpos [] ss = none := substring_charpos_of_nil gss
+  simp only [gsk, not_false_eq_true, not_sym] at i1
   simp only [mem_singleton, Bool.not_eq_true, forall_eq, true_and]
-  have gss:= substring_charpos_none_sound gss; simp only [gss]
+  have gsk:= substring_charpos_none_sound gsk; simp only [gsk]
   rename_i g0; unfold substring_charpos substring_charpos_aux at g0
-  cases s1; simp only [length_nil, gt_iff_lt, lt_self_iff_false] at gs1
+  cases ss; simp only [length_nil, gt_iff_lt, lt_self_iff_false] at gss
   simp only [not_false_eq_true, not_sym] at g0
   unfold split_substring at g
   split at g; split at g ; rw[g];
   simp only [str_concat_pad, mem_singleton, Bool.not_eq_true, forall_eq, true_and]
   rename_i g0; have g0:= substring_charpos_none_sound g0; simp only [g0]
-  rename_i gs gs1 _ _;  rename_i p gp
-  generalize gu: (List.drop (p + s1.length) s) = u
-  generalize gsu: split_substring u s1 = su
+  rename_i gs gss _ _;  rename_i i gi
+  generalize gu: (List.drop (i + ss.length) s) = u
+  generalize gsu: split_substring u ss = su
   generalize gm: u.length = m
   rw[gu, gsu] at g
   symm at gl gu gsu
@@ -3147,68 +3181,68 @@ theorem split_substring_reconstruct (g: sl = split_substring s s1) (gs1: s1.leng
     rw[gl, ← gm,  gu]; simp only [length_drop]; omega
   have ind:= ind m i1 gsu gm
   rw[g]; simp only [str_concat_pad, append_eq, List.nil_append, List.append_assoc]
-  split; have : split_substring u s1 ≠ [] := split_substring_ne_nil gs1
+  split; have : split_substring u ss ≠ [] := split_substring_ne_nil gss
   rw[← gsu] at this ; contradiction;
   constructor; rw[← ind.left]
-  have e1: List.take p s ++ s1 = List.take (p + s1.length) s:= by
-    have e11:= substring_charpos_some_sound.mp gp
+  have e1: List.take i s ++ ss = List.take (i + ss.length) s:= by
+    have e11:= substring_charpos_some_sound.mp gi
     unfold is_first_substringcharpos at e11
     have e11:= e11.left
     unfold is_substringcharpos at e11
     obtain ⟨s0,s2, g02⟩ := e11
     have e12: List.IsPrefix s0 s :=by rw[g02.left]; simp only [List.append_assoc, prefix_append]
-    have e12: s.take p = s0 := by rw[← g02.right]; apply prefix_eq_take e12
+    have e12: s.take i = s0 := by rw[← g02.right]; apply prefix_eq_take e12
     rw[e12]
-    have e14: (p + s1.length) = (s0 ++ s1).length :=by simp only [length_append, g02]
+    have e14: (i + ss.length) = (s0 ++ ss).length :=by simp only [length_append, g02]
     symm; rw[e14]; apply prefix_eq_take; rw[g02.left]; apply prefix_append
   rw[← List.append_assoc, e1, gu]; simp only [take_append_drop]
   simp only [singleton_append, mem_cons, forall_eq_or_imp]
   constructor
-  exact not_contain_substring_until_substring_charpos gs1 gp
+  exact not_contain_substring_until_substring_charpos gss gi
   exact ind.right
   contradiction
 
-lemma split_substring_singleton_of_length (gs1: s1.length>0):
-      (split_substring s s1).length = 1 → split_substring s s1 = [s]:=by
+lemma split_substring_singleton_of_length (gss: ss.length>0):
+      (split_substring s ss).length = 1 → split_substring s ss = [s]:=by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s
   rename_i n _
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs
   rw [gs]; unfold split_substring
-  have i:= @substring_charpos_of_nil s1 gs1; rw[i]
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, List.length_singleton, forall_true_left]
-  unfold split_substring; simp only [gt_iff_lt, gs1, ↓reduceDIte]
+  have gk:= @substring_charpos_of_nil ss gss; rw[gk]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, List.length_singleton, forall_true_left]
+  unfold split_substring; simp only [gt_iff_lt, gss, ↓reduceDIte]
   split; simp only [List.length_singleton, forall_true_left]
   simp only [length_cons, succ.injEq, cons.injEq]
   intro gc; have gc:= List.eq_nil_of_length_eq_zero gc
-  simp only [split_substring_ne_nil gs1, not_false_eq_true, not_sym] at gc
+  simp only [split_substring_ne_nil gss, not_false_eq_true, not_sym] at gc
 
 
 lemma split_substring_singleton_of_substring_charpos :
-      substring_charpos s s1 = none → split_substring s s1 = [s]:=by
-  by_cases (s1.length=0); rename_i gc; have gc:= eq_nil_of_length_eq_zero gc
+      substring_charpos s ss = none → split_substring s ss = [s]:=by
+  by_cases (ss.length=0); rename_i gc; have gc:= eq_nil_of_length_eq_zero gc
   rw[gc] ; unfold substring_charpos substring_charpos_aux;
   simp only [contains_substring.match_1.eq_1, not_false_eq_true, not_sym, IsEmpty.forall_iff]
-  have gs1: s1.length>0 :=by omega
+  have gss: ss.length>0 :=by omega
   intro g
-  unfold split_substring; rw[g]; simp only [gt_iff_lt, gs1, ↓reduceDIte]
+  unfold split_substring; rw[g]; simp only [gt_iff_lt, gss, ↓reduceDIte]
 
 lemma split_inclusive_substring_split_substring_eq_length:
-    (split_substring s s1).length = (split_inclusive_substring s s1).length:= by
+    (split_substring s ss).length = (split_inclusive_substring s ss).length:= by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s
   rename_i n ind
   by_cases (s.length = 0)
   rename_i gs; have gs:= List.eq_nil_of_length_eq_zero gs; rw [gs];
   unfold split_substring split_inclusive_substring
-  split; rename_i gs1
-  have i:= @substring_charpos_of_nil s1 gs1; rw[i]
+  split; rename_i gss
+  have gk:= @substring_charpos_of_nil ss gss; rw[gk]
   simp only [map_nil, singleton_append, length_cons, List.length_singleton, reduceSucc]
   unfold split_substring split_inclusive_substring
   split; split; simp only [List.length_singleton]
-  simp only [length_cons, succ.injEq]; rename_i p _
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  simp only [length_cons, succ.injEq]; rename_i i _
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n := by rw[← gm, ← gl]; simp only [length_drop]; omega
   exact ind m id1 gm
   simp only [singleton_append, cons_append, length_cons, length_append, length_map,
@@ -3218,11 +3252,12 @@ lemma split_inclusive_substring_split_substring_eq_length:
 --#eval split_substring "lion::tiger::leopard".data "::".data
 --#eval split_char_filter "lionXXtigerXleopardXX".data Char.isUpper
 
-def split (s: Str) (p: Pattern) := match p with
+def split (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => split_char_filter s (fun x => x = c)
   | Pattern.ListChar l => split_char_filter s (fun x => x ∈ l)
   | Pattern.FilterFunction f => split_char_filter s f
-  | Pattern.WholeString s1 => split_substring s s1
+  | Pattern.WholeString ss => split_substring s ss
+
 
 /-
 Function: rsplit
@@ -3230,7 +3265,7 @@ From: str::core::rsplit
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.rsplit
 -/
 
-def rsplit (s: Str) (p: Pattern) := List.reverse (split s p)
+def rsplit (s: Str) (P: Pattern) := List.reverse (split s P)
 
 
 /-
@@ -3345,21 +3380,21 @@ lemma splitn_char_filter_ne_nil (gn: n>0): splitn_char_filter s f n ≠ [] := by
   split; exact split_char_filter_ne_nil;
   simp only [ne_eq, append_eq_nil, take_eq_nil_iff, cons_ne_self, and_false, not_false_eq_true, not_sym]
 
-def splitn_substring(s: Str) (s1: Str) (n: Nat)  : List Str:=
+def splitn_substring(s: Str) (ss: Str) (n: Nat)  : List Str:=
   if n = 0 then [] else if n=1 then [s] else
-        if _h1: s1.length > 0 then
-          match _t: substring_charpos s s1 with
+        if _h1: ss.length > 0 then
+          match _t: substring_charpos s ss with
             | none => [s]
-            | some p => (s.take p)::splitn_substring (s.drop (p + s1.length)) s1 (n-1)
+            | some i => (s.take i)::splitn_substring (s.drop (i + ss.length)) ss (n-1)
         else List.map (fun c => [c]) s
 termination_by length s
 decreasing_by simp_wf; have:= substring_charpos_terminate _t _h1; simp only [_h1, or_true, and_true, gt_iff_lt]; omega
 
-def splitn_substring_def (s: Str) (s1: Str) (n: Nat) :=
-      if (split_substring s s1).length ≤ n then split_substring s s1 else
-      (split_substring s s1).take (n-1) ++ [flatten ((split_inclusive_substring s s1).drop (n-1))]
+def splitn_substring_def (s: Str) (ss: Str) (n: Nat) :=
+      if (split_substring s ss).length ≤ n then split_substring s ss else
+      (split_substring s ss).take (n-1) ++ [flatten ((split_inclusive_substring s ss).drop (n-1))]
 
-theorem splitn_substring_EQ (gs1: s1.length > 0) (gn: n > 0) : splitn_substring s s1 n =  splitn_substring_def s s1 n :=by
+theorem splitn_substring_EQ (gss: ss.length > 0) (gn: n > 0) : splitn_substring s ss n =  splitn_substring_def s ss n :=by
   generalize gls: s.length = ls
   induction ls using Nat.strong_induction_on generalizing s n
   rename_i ls ind
@@ -3367,61 +3402,61 @@ theorem splitn_substring_EQ (gs1: s1.length > 0) (gn: n > 0) : splitn_substring 
   by_cases (ls = 0); rename_i g1; rw[g1] at gls
   have gls:= List.eq_nil_of_length_eq_zero gls; rw[gls];
   unfold splitn_substring splitn_substring_def  split_substring split_inclusive_substring
-  have i:= @substring_charpos_of_nil s1 gs1
+  have gk:= @substring_charpos_of_nil ss gss
   have gn1: n ≥ 1 := by omega
-  rw[i]; simp only [gn, not_false_eq_true, not_sym, ↓reduceIte, gt_iff_lt, gs1, ↓reduceDIte,
+  rw[gk]; simp only [gn, not_false_eq_true, not_sym, ↓reduceIte, gt_iff_lt, gss, ↓reduceDIte,
     ite_self, length_cons, length_nil, reduceSucc, gn1]
-  unfold splitn_substring; simp only [gn, not_false_eq_true, not_sym, ↓reduceIte, gt_iff_lt, gs1,↓reduceDIte]
+  unfold splitn_substring; simp only [gn, not_false_eq_true, not_sym, ↓reduceIte, gt_iff_lt, gss,↓reduceDIte]
   split; unfold splitn_substring_def; rename_i gn; rw[gn]; split
-  have: (split_substring s s1).length = 1 := by
-    by_cases (split_substring s s1).length = 0; rename_i gc
+  have: (split_substring s ss).length = 1 := by
+    by_cases (split_substring s ss).length = 0; rename_i gc
     have gc:= List.eq_nil_of_length_eq_zero gc
-    simp only [split_substring_ne_nil gs1, not_false_eq_true, not_sym] at gc
+    simp only [split_substring_ne_nil gss, not_false_eq_true, not_sym] at gc
     omega
-  simp only [split_substring_singleton_of_length gs1 this, List.length_singleton, le_refl, ↓reduceIte];
+  simp only [split_substring_singleton_of_length gss this, List.length_singleton, le_refl, ↓reduceIte];
   simp only [ge_iff_le, le_refl, tsub_eq_zero_of_le, take_zero, drop_zero,
     split_inclusive_substring_merge, List.nil_append]
   split; rename_i gc; unfold splitn_substring_def
   simp only [split_substring_singleton_of_substring_charpos gc, List.length_singleton]
   have : n ≥ 1 := by omega
-  simp only [this, ↓reduceIte]; rename_i p gp
+  simp only [this, ↓reduceIte]; rename_i i gi
   unfold splitn_substring_def  split_inclusive_substring
-  split; unfold split_substring; rw[gp]; simp only [gt_iff_lt, gs1, ↓reduceDIte, cons.injEq, true_and]
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  split; unfold split_substring; rw[gi]; simp only [gt_iff_lt, gss, ↓reduceDIte, cons.injEq, true_and]
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < ls:= by rw[← gm, ← gls]; simp only [length_drop]; omega
   have id0: n - 1 > 0 := by omega
   have ind:= ind m id1 id0 gm; rw[ind]; unfold splitn_substring_def
-  have : (split_substring (List.drop (p + s1.length) s) s1).length ≤ n - 1 :=by
-    rename_i gc ; unfold split_substring at gc; rw[gp] at gc
-    simp only [gt_iff_lt, gs1, ↓reduceDIte, length_cons] at gc; omega
+  have : (split_substring (List.drop (i + ss.length) s) ss).length ≤ n - 1 :=by
+    rename_i gc ; unfold split_substring at gc; rw[gi] at gc
+    simp only [gt_iff_lt, gss, ↓reduceDIte, length_cons] at gc; omega
   simp only [this, ↓reduceIte]
   have : n - 1 = succ (n-2) :=by omega
-  rw[split_substring, gp, this];
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, take_cons_succ, drop_succ_cons, cons_append, cons.injEq,true_and]
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  rw[split_substring, gi, this];
+  simp only [gt_iff_lt, gss, ↓reduceDIte, take_cons_succ, drop_succ_cons, cons_append, cons.injEq,true_and]
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < ls:= by rw[← gm, ← gls]; simp only [length_drop]; omega
   have id0: n - 1 > 0 := by omega
   have ind:= ind m id1 id0 gm; rw[← this,ind]; unfold splitn_substring_def
-  have: ¬ (split_substring (List.drop (p + s1.length) s) s1).length ≤ n - 1 := by
-    rename_i gc ; unfold split_substring at gc; rw[gp] at gc
-    simp only [gt_iff_lt, gs1, ↓reduceDIte, length_cons] at gc; omega
+  have: ¬ (split_substring (List.drop (i + ss.length) s) ss).length ≤ n - 1 := by
+    rename_i gc ; unfold split_substring at gc; rw[gi] at gc
+    simp only [gt_iff_lt, gss, ↓reduceDIte, length_cons] at gc; omega
   simp only [this, ↓reduceIte]
   have : n - 1 -1 = n - 2 :=by omega
   rw[this]
 
-lemma splitn_substring_ne_nil (gs1: s1.length > 0) (gn: n > 0):  splitn_substring s s1 n ≠ [] := by
-  rw[splitn_substring_EQ gs1 gn, splitn_substring_def]
-  split; exact split_substring_ne_nil gs1;
+lemma splitn_substring_ne_nil (gss: ss.length > 0) (gn: n > 0):  splitn_substring s ss n ≠ [] := by
+  rw[splitn_substring_EQ gss gn, splitn_substring_def]
+  split; exact split_substring_ne_nil gss;
   simp only [ne_eq, append_eq_nil, take_eq_nil_iff, cons_ne_self, and_false, not_false_eq_true, not_sym]
 
 
 --#eval splitn_by_substring "lionXXtigerXXleopardXXcatXXdog".data "XX".data 3
 
-def splitn (s: Str) (p: Pattern) (n: Nat):= match p with
+def splitn (s: Str) (P: Pattern) (n: Nat):= match P with
   | Pattern.SingleChar c => splitn_char_filter s (fun x => x = c) n
   | Pattern.ListChar l => splitn_char_filter s (fun x => x ∈ l) n
   | Pattern.FilterFunction f => splitn_char_filter s f n
-  | Pattern.WholeString s1 => splitn_substring s s1 n
+  | Pattern.WholeString ss => splitn_substring s ss n
 
 /-
 Function: rsplitn
@@ -3432,13 +3467,13 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.rsplitn
 
 def rsplitn_char_filter (s: Str) (f: Char → Bool) (n: Nat) := List.map (fun x: Str => x.reverse) (splitn_char_filter (s.reverse) f n)
 
-def rsplitn_substring (s: Str) (s1: Str) (n: Nat) := List.map (fun x: Str => x.reverse) (splitn_substring (s.reverse) (s1.reverse) n)
+def rsplitn_substring (s: Str) (ss: Str) (n: Nat) := List.map (fun x: Str => x.reverse) (splitn_substring (s.reverse) (ss.reverse) n)
 
-def rsplitn (s: Str) (p: Pattern) (n: Nat):= match p with
+def rsplitn (s: Str) (P: Pattern) (n: Nat):= match P with
   | Pattern.SingleChar c => rsplitn_char_filter s (fun x => x = c) n
   | Pattern.ListChar l => rsplitn_char_filter s (fun x => x ∈ l) n
   | Pattern.FilterFunction f => rsplitn_char_filter s f n
-  | Pattern.WholeString s1 => rsplitn_substring s s1 n
+  | Pattern.WholeString ss => rsplitn_substring s ss n
 
 /-
 Function: split_once
@@ -3447,7 +3482,7 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.split_once
 -/
 
 
-def split_once (s: Str) (p: Pattern)  := splitn s p 1
+def split_once (s: Str) (P: Pattern)  := splitn s P 1
 
 /-
 Function: rsplit_once
@@ -3455,7 +3490,7 @@ From: str::core::rsplit_once
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.rsplit_once
 -/
 
-def rsplitn_once (s: Str) (p: Pattern)  := rsplitn s p 1
+def rsplitn_once (s: Str) (P: Pattern)  := rsplitn s P 1
 
 
 /-
@@ -3572,18 +3607,18 @@ lemma sub_split_ascii_whitespace_flatten1: List.foldl List.append [] (split_asci
   simp only [singleton_append, foldl_cons, append_eq, List.nil_append]
   rw[fold_append_cons]; exact ind
 
-lemma sub_split_ascii_whitespace_flatten2  (g: m ∈ split_ascii_whitespace_aux s w b ) (gm: b = true ∨ w ≠ [])
+lemma sub_split_ascii_whitespace_flatten2  (g: m ∈ split_ascii_whitespace_aux s w b ) (gc: b = true ∨ w ≠ [])
   :  ¬ m = [] :=by
   induction s generalizing w b
   simp only [split_ascii_whitespace_aux, List.nil_append] at g
-  cases gm; rename_i gm; simp only [gm, not_false_eq_true, not_sym, ↓reduceIte, not_mem_nil] at g
+  cases gc; rename_i gc; simp only [gc, not_false_eq_true, not_sym, ↓reduceIte, not_mem_nil] at g
   split at g; simp only [mem_singleton] at g; simp only [g]; assumption; simp only [not_mem_nil] at g
   rename_i h t ind
   simp only [split_ascii_whitespace_aux, List.nil_append] at g; split at g
   split at g;
   simp only [singleton_append, mem_cons] at g;
-  rename_i gb; simp only [gb, not_false_eq_true, not_sym, ne_eq, false_or] at gm
-  cases g; rename_i gw; rw[gw]; exact gm; rename_i g
+  rename_i gb; simp only [gb, not_false_eq_true, not_sym, ne_eq, false_or] at gc
+  cases g; rename_i gw; rw[gw]; exact gc; rename_i g
   have ind:=ind g; simp only [ne_eq, not_true_eq_false, or_false, forall_true_left] at ind; exact ind
   have ind:=ind g; simp only [ne_eq, not_true_eq_false, or_false, forall_true_left] at ind; exact ind
   have ind:=ind g;simp only [not_false_eq_true, not_sym, ne_eq, append_eq_nil, and_false, or_true,
@@ -3591,7 +3626,7 @@ lemma sub_split_ascii_whitespace_flatten2  (g: m ∈ split_ascii_whitespace_aux 
 
 
 lemma sub_split_ascii_whitespace_flatten: ((flatten (split_ascii_whitespace_aux s [] b) = List.filter (fun a => ! rust_isWhitespace a) s))
-                                  ∧ (∀ m ∈ split_ascii_whitespace s, m ≠ []):=by
+                                  ∧ (∀ x ∈ split_ascii_whitespace s, x ≠ []):=by
   unfold flatten
   induction s generalizing b
   simp only [split_ascii_whitespace, split_ascii_whitespace_aux, not_false_eq_true, not_sym, ↓reduceIte,
@@ -3606,15 +3641,15 @@ lemma sub_split_ascii_whitespace_flatten: ((flatten (split_ascii_whitespace_aux 
   simp only [singleton_append, foldl_cons, append_eq, List.append_nil] ; exact ind
   unfold split_ascii_whitespace at ind; exact ind
   rename_i gc; simp only [gc, Bool.not_false]; rw[sub_split_ascii_whitespace_flatten1]
-  simp only [ind, true_and]; intro m gm
-  have gm:= sub_split_ascii_whitespace_flatten2 gm
-  simp only [not_false_eq_true, not_sym, ne_eq, or_true, forall_true_left] at gm
-  exact gm
+  simp only [ind, true_and]; intro x gx
+  have gx:= sub_split_ascii_whitespace_flatten2 gx
+  simp only [not_false_eq_true, not_sym, ne_eq, or_true, forall_true_left] at gx
+  exact gx
 
 lemma split_ascii_whitespace_flatten: flatten (split_ascii_whitespace s) = List.filter (fun a => ! rust_isWhitespace a) s := by
   unfold split_ascii_whitespace; simp only [sub_split_ascii_whitespace_flatten]
 
-lemma split_ascii_whitespace_not_contail_nil:  ∀ m ∈ split_ascii_whitespace s, m ≠ [] := by
+lemma split_ascii_whitespace_not_contail_nil:  ∀ x ∈ split_ascii_whitespace s, x ≠ [] := by
   have i:= @sub_split_ascii_whitespace_flatten s true
   exact i.right
 
@@ -3634,7 +3669,7 @@ def split_whitespace_aux (s: Str) (w: Str) (prespace: Bool): List Str := match s
 
 def split_whitespace (s: Str) := split_whitespace_aux s [] true
 
-def split_whitespace_def (s: Str) := filter (fun a: Str => a.length > 0) (split_char_filter s is_Unicode_Whitespace)
+def split_whitespace_def (s: Str) := filter (fun sa: Str => sa.length > 0) (split_char_filter s is_Unicode_Whitespace)
 
 --#eval split_whitespace "   abc  fsdf  f  ".data
 --#eval split_whitespace "   ".data
@@ -3724,26 +3759,26 @@ lemma sub_split_whitespace_flatten1: List.foldl List.append [] (split_whitespace
   simp only [singleton_append, foldl_cons, append_eq, List.nil_append]
   rw[fold_append_cons]; exact ind
 
-lemma sub_split_whitespace_flatten2  (g: m ∈ split_whitespace_aux s w b ) (gm: b = true ∨ w ≠ [])
+lemma sub_split_whitespace_flatten2  (g: m ∈ split_whitespace_aux s w b ) (gc: b = true ∨ w ≠ [])
   :  ¬ m = [] :=by
   induction s generalizing w b
   simp only [split_whitespace_aux, List.nil_append] at g
-  cases gm; rename_i gm; simp only [gm, not_false_eq_true, not_sym, ↓reduceIte, not_mem_nil] at g
+  cases gc; rename_i gc; simp only [gc, not_false_eq_true, not_sym, ↓reduceIte, not_mem_nil] at g
   split at g; simp only [mem_singleton] at g; simp only [g]; assumption; simp only [not_mem_nil] at g
   rename_i h t ind
   simp only [split_whitespace_aux, List.nil_append] at g; split at g
   split at g;
   simp only [singleton_append, mem_cons] at g;
-  rename_i gb; simp only [gb, not_false_eq_true, not_sym, ne_eq, false_or] at gm
-  cases g; rename_i gw; rw[gw]; exact gm; rename_i g
+  rename_i gb; simp only [gb, not_false_eq_true, not_sym, ne_eq, false_or] at gc
+  cases g; rename_i gw; rw[gw]; exact gc; rename_i g
   have ind:=ind g; simp only [ne_eq, not_true_eq_false, or_false, forall_true_left] at ind; exact ind
   have ind:=ind g; simp only [ne_eq, not_true_eq_false, or_false, forall_true_left] at ind; exact ind
   have ind:=ind g;simp only [not_false_eq_true, not_sym, ne_eq, append_eq_nil, and_false, or_true,
     forall_true_left] at ind; exact ind
 
 
-lemma sub_split_whitespace_flatten: ((flatten (split_whitespace_aux s [] b) = List.filter (fun a => ! is_Unicode_Whitespace a) s))
-                                  ∧ (∀ m ∈ split_whitespace s, m ≠ []):=by
+lemma sub_split_whitespace_flatten: ((flatten (split_whitespace_aux s [] b) = List.filter (fun c => ! is_Unicode_Whitespace c) s))
+                                  ∧ (∀ x ∈ split_whitespace s, x ≠ []):=by
   unfold flatten
   induction s generalizing b
   simp only [split_whitespace, split_whitespace_aux, not_false_eq_true, not_sym, ↓reduceIte,
@@ -3758,17 +3793,17 @@ lemma sub_split_whitespace_flatten: ((flatten (split_whitespace_aux s [] b) = Li
   simp only [singleton_append, foldl_cons, append_eq, List.append_nil] ; exact ind
   unfold split_whitespace at ind; exact ind
   rename_i gc; simp only [gc, Bool.not_false]; rw[sub_split_whitespace_flatten1]
-  simp only [ind, true_and]; intro m gm
-  have gm:= sub_split_whitespace_flatten2 gm
-  simp only [not_false_eq_true, not_sym, ne_eq, or_true, forall_true_left] at gm
-  exact gm
+  simp only [ind, true_and]; intro x gx
+  have gx:= sub_split_whitespace_flatten2 gx
+  simp only [not_false_eq_true, not_sym, ne_eq, or_true, forall_true_left] at gx
+  exact gx
 
-lemma split_whitespace_flatten: flatten (split_whitespace s) = List.filter (fun a => ! is_Unicode_Whitespace a) s := by
+lemma split_whitespace_flatten: flatten (split_whitespace s) = List.filter (fun c => ! is_Unicode_Whitespace c) s := by
   unfold split_whitespace; simp only [sub_split_whitespace_flatten]
 
-lemma split_whitespace_not_contail_nil:  ∀ m ∈ split_whitespace s, m ≠ [] := by
-  have i:= @sub_split_whitespace_flatten s true
-  exact i.right
+lemma split_whitespace_not_contail_nil:  ∀ x ∈ split_whitespace s, x ≠ [] := by
+  have g:= @sub_split_whitespace_flatten s true
+  exact g.right
 
 --#eval split_whitespace "    ".data
 
@@ -3789,7 +3824,7 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.matches
 -/
 
 
-lemma submatches_lem (g: substring_charpos s s1 = some p) (g1: s1.length > 0): s.length > 0:= by
+lemma submatches_lem (g: substring_charpos s ss = some p) (g1: ss.length > 0): s.length > 0:= by
   have h:= substring_charpos_some_sound.mp g
   unfold is_first_substringcharpos at h
   have h:= h.left; unfold is_substringcharpos at h
@@ -3812,15 +3847,15 @@ theorem matches_char_filter_EQ : matches_char_filter s f = matches_char_filter_d
   split; rename_i gf; simp only [gf, map_cons, cons.injEq, true_and, ind]
   rename_i gf; simp only [ind, gf]
 
-def matches_substring (s s1: Str) :=
-  if _h: s1 = [] then []
-  else match _h1: substring_charpos s s1 with
+def matches_substring (s ss: Str) :=
+  if _h: ss = [] then []
+  else match _h1: substring_charpos s ss with
     | none => []
-    | some p => s1::(matches_substring (s.drop (p + s1.length)) s1)
+    | some p => ss::(matches_substring (s.drop (p + ss.length)) ss)
 termination_by length s
 decreasing_by
   simp_wf;
-  have i:  s1.length > 0 := by cases s1; contradiction; simp only [length_cons, gt_iff_lt, zero_lt_succ]
+  have i:  ss.length > 0 := by cases ss; contradiction; simp only [length_cons, gt_iff_lt, zero_lt_succ]
   have i2 := submatches_lem _h1 i
   omega
 
@@ -3844,24 +3879,24 @@ theorem list_Str_repeat_length_sound: list_Str_repeat s n = l ↔ (l.length =n �
   have ind:= ind.mpr ⟨g.left, g.right.right⟩
   simp only [ind, cons.injEq, and_true]; symm; exact g.right.left
 
-def matches_substring_def (s s1: Str) := list_Str_repeat s1 (list_substring_charpos s s1).length
+def matches_substring_def (s ss: Str) := list_Str_repeat ss (list_substring_charpos s ss).length
 
-theorem matches_substring_EQ (gs1: s1.length > 0): matches_substring s s1 = matches_substring_def s s1:= by
+theorem matches_substring_EQ (gss: ss.length > 0): matches_substring s ss = matches_substring_def s ss:= by
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s
   rename_i l ind
-  have gs11: ¬ s1 = [] := by by_contra; rename_i gc; simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gs1
+  have gs11: ¬ ss = [] := by by_contra; rename_i gc; simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gss
   by_cases (l=0); rename_i gc; rw[gc] at gl
   have gl:=List.eq_nil_of_length_eq_zero gl; rw[gl]
   unfold matches_substring matches_substring_def list_Str_repeat list_substring_charpos list_substring_charpos_aux
-  have : substring_charpos [] s1 = none := substring_charpos_of_nil gs1; rw[this]
-  simp only [gs11, not_false_eq_true, not_sym, ↓reduceDIte, gt_iff_lt, gs1, length_nil]
+  have : substring_charpos [] ss = none := substring_charpos_of_nil gss; rw[this]
+  simp only [gs11, not_false_eq_true, not_sym, ↓reduceDIte, gt_iff_lt, gss, length_nil]
   unfold matches_substring matches_substring_def list_Str_repeat list_substring_charpos list_substring_charpos_aux
-  simp only [gs11, not_false_eq_true, not_sym, ↓reduceDIte, gt_iff_lt, gs1, zero_add]
+  simp only [gs11, not_false_eq_true, not_sym, ↓reduceDIte, gt_iff_lt, gss, zero_add]
   split ; simp only [length_nil]
   rename_i p _; simp only [length_cons, cons.injEq, true_and]
-  rw[list_substring_charpos_aux_para1_elim_mpr gs1, length_map]
-  generalize gs0: List.drop (p + s1.length) s = s0
+  rw[list_substring_charpos_aux_para1_elim_mpr gss, length_map]
+  generalize gs0: List.drop (p + ss.length) s = s0
   generalize gm: s0.length = m
   have id1: m < l := by rw[← gm, ← gl, ← gs0]; simp only [length_drop]; omega
   exact ind m id1 gm
@@ -3870,11 +3905,11 @@ theorem matches_substring_EQ (gs1: s1.length > 0): matches_substring s s1 = matc
 
 --#eval matches_substring "abcXXXabcYYYabc".data "abc".data
 
-def rust_matches (s: Str) (p: Pattern) := match p with
+def rust_matches (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => matches_char_filter s (fun x => x = c)
   | Pattern.ListChar l => matches_char_filter s (fun x => x ∈ l)
   | Pattern.FilterFunction f => matches_char_filter s f
-  | Pattern.WholeString s1 => matches_substring s s1
+  | Pattern.WholeString ss => matches_substring s ss
 
 
 /-
@@ -3884,7 +3919,7 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.rmatches
 -/
 
 
-def rmatches (s: Str) (p: Pattern) := List.reverse (rust_matches s p)
+def rmatches (s: Str) (P: Pattern) := List.reverse (rust_matches s P)
 
 
 /-
@@ -3892,18 +3927,18 @@ Function: matches_indices
 From: str::core::matches_indices
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.matches_indices
 -/
-def matches_indices_char_filter_aux (s: Str) (f: Char → Bool) (p: Nat):= match s with
+def matches_indices_char_filter_aux (s: Str) (f: Char → Bool) (i: Nat):= match s with
   | [] => []
-  | h::t => if f h then (p,[h])::matches_indices_char_filter_aux t f (p + Char.utf8Size h)
-                    else  matches_indices_char_filter_aux t f (p + Char.utf8Size h)
+  | h::t => if f h then (i,[h])::matches_indices_char_filter_aux t f (i + Char.utf8Size h)
+                    else  matches_indices_char_filter_aux t f (i + Char.utf8Size h)
 
 def matches_indices_char_filter (s: Str) (f: Char → Bool) := matches_indices_char_filter_aux s f 0
 
 def matches_indices_char_filter_def (s: Str) (f: Char → Bool) := List.zip (list_char_filter_pos s f) (matches_char_filter s f)
 
 lemma matches_indices_char_filter_aux_EQ:
-      matches_indices_char_filter_aux s f p = List.zip (list_char_filter_pos_aux s f p) (matches_char_filter s f):=by
-  induction s generalizing p
+      matches_indices_char_filter_aux s f i = List.zip (list_char_filter_pos_aux s f i) (matches_char_filter s f):=by
+  induction s generalizing i
   simp only [matches_indices_char_filter_aux, list_char_filter_pos_aux, zip_nil_left]
   rename_i h t ind
   simp only [matches_indices_char_filter_aux, list_char_filter_pos_aux, matches_char_filter]
@@ -3915,57 +3950,57 @@ lemma matches_indices_char_filter_EQ:
   unfold matches_indices_char_filter matches_indices_char_filter_def
   exact matches_indices_char_filter_aux_EQ
 
-def matches_indices_substring_aux (s s1: Str) (k: Nat):=
-  if _h: s1 = [] then []
-  else match _h1: substring_charpos s s1 with
+def matches_indices_substring_aux (s ss: Str) (k: Nat):=
+  if _h: ss = [] then []
+  else match _h1: substring_charpos s ss with
     | none => []
-    | some p => (k + byteSize (s.take p), s1)::(matches_indices_substring_aux (s.drop (p + s1.length)) s1 (k + byteSize (s.take p) + byteSize s1 ))
+    | some i => (k + byteSize (s.take i), ss)::(matches_indices_substring_aux (s.drop (i + ss.length)) ss (k + byteSize (s.take i) + byteSize ss ))
 termination_by length s
 decreasing_by
   simp_wf;
-  have i:  s1.length > 0 := by cases s1; contradiction; simp only [length_cons, gt_iff_lt, zero_lt_succ]
-  have i2 := submatches_lem _h1 i
+  have gk:  ss.length > 0 := by cases ss; contradiction; simp only [length_cons, gt_iff_lt, zero_lt_succ]
+  have i2 := submatches_lem _h1 gk
   omega
 
-def matches_indices_substring (s s1: Str) := matches_indices_substring_aux s s1 0
+def matches_indices_substring (s ss: Str) := matches_indices_substring_aux s ss 0
 
-def matches_indices_substring_def (s s1: Str) := List.map (fun a => (a, s1)) (list_substring_pos s s1)
+def matches_indices_substring_def (s ss: Str) := List.map (fun a => (a, ss)) (list_substring_pos s ss)
 
-lemma matches_indices_substring_aux_EQ (gs1: s1.length > 0):
-      matches_indices_substring_aux s s1 k = List.map (fun a => (a, s1)) (list_substring_pos_aux s s1 k) :=by
-  generalize gl: s.length = l
-  induction l using Nat.strong_induction_on generalizing s k
-  rename_i l ind
-  have gs11: ¬ s1 = [] := by by_contra; rename_i gc; simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gs1
-  by_cases (l=0); rename_i gc; rw[gc] at gl
-  have gl:=List.eq_nil_of_length_eq_zero gl; rw[gl]
+lemma matches_indices_substring_aux_EQ (gss: ss.length > 0):
+      matches_indices_substring_aux s ss k = List.map (fun a => (a, ss)) (list_substring_pos_aux s ss k) :=by
+  generalize gn: s.length = n
+  induction n using Nat.strong_induction_on generalizing s k
+  rename_i n ind
+  have gs11: ¬ ss = [] := by by_contra; rename_i gc; simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gss
+  by_cases (n=0); rename_i gc; rw[gc] at gn
+  have gn:=List.eq_nil_of_length_eq_zero gn; rw[gn]
   unfold matches_indices_substring_aux list_substring_pos_aux
   simp only [gs11, not_false_eq_true, not_sym, ↓reduceDIte, drop_nil, take_nil, byteSize, add_zero,
-    gt_iff_lt, gs1]
-  have : substring_charpos [] s1 = none := substring_charpos_of_nil gs1; rw[this]
+    gt_iff_lt, gss]
+  have : substring_charpos [] ss = none := substring_charpos_of_nil gss; rw[this]
   simp only [map_nil]
   unfold matches_indices_substring_aux list_substring_pos_aux
-  simp only [gs11, not_false_eq_true, not_sym, ↓reduceDIte, gt_iff_lt, gs1]
+  simp only [gs11, not_false_eq_true, not_sym, ↓reduceDIte, gt_iff_lt, gss]
   split; simp only [map_nil]
   simp only [map_cons, cons.injEq, Prod.mk.injEq, add_right_inj, and_true]
-  rename_i p _
-  have : byteSize (take p s) = charpos_to_pos s p := by rw[charpos_to_pos_EQ, charpos_to_pos_def]
+  rename_i i _
+  have : byteSize (take i s) = charpos_to_pos s i := by rw[charpos_to_pos_EQ, charpos_to_pos_def]
   simp only [this, true_and]
-  generalize gm: (drop (p + length s1) s).length = m
-  have id1: m < l :=by
-    rw[← gm, ← gl]; simp only [length_drop, tsub_lt_self_iff, add_pos_iff]; omega
+  generalize gm: (drop (i + length ss) s).length = m
+  have id1: m < n :=by
+    rw[← gm, ← gn]; simp only [length_drop, tsub_lt_self_iff, add_pos_iff]; omega
   exact ind m id1 gm
 
-theorem matches_indices_substring_EQ (gs1: s1.length > 0):
-      matches_indices_substring s s1 = matches_indices_substring_def s s1 :=by
+theorem matches_indices_substring_EQ (gss: ss.length > 0):
+      matches_indices_substring s ss = matches_indices_substring_def s ss :=by
   unfold matches_indices_substring matches_indices_substring_def list_substring_pos
-  apply matches_indices_substring_aux_EQ gs1
+  apply matches_indices_substring_aux_EQ gss
 
-def matches_indices (s: Str) (p: Pattern) := match p with
+def matches_indices (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => matches_indices_char_filter s (fun x => x = c)
   | Pattern.ListChar l => matches_indices_char_filter s (fun x => x ∈ l)
   | Pattern.FilterFunction f => matches_indices_char_filter s f
-  | Pattern.WholeString s1 => matches_indices_substring s s1
+  | Pattern.WholeString ss => matches_indices_substring s ss
 
 /-
 Function: rmatches_indices
@@ -3973,7 +4008,7 @@ From: str::core::rmatches_indices
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.matches_indices
 -/
 
-def rmatches_indices (s: Str) (p: Pattern) := List.reverse (matches_indices s p)
+def rmatches_indices (s: Str) (P: Pattern) := List.reverse (matches_indices s P)
 
 
 /-
@@ -3992,18 +4027,19 @@ lemma starts_with_char_filter_sound : starts_with_char_filter s f ↔  ∃ c t, 
   intro g; obtain ⟨c, t1, g⟩ :=g; simp only [cons.injEq] at g
   simp only [starts_with_char_filter, g]
 
-def starts_with (s: Str) (p: Pattern) := match p with
+def starts_with (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => starts_with_char_filter s (fun a => a == c)
   | Pattern.ListChar l => starts_with_char_filter s (fun a => a ∈ l)
   | Pattern.FilterFunction f => starts_with_char_filter s f
-  | Pattern.WholeString s1 => List.isPrefixOf s1 s
+  | Pattern.WholeString ss => List.isPrefixOf ss s
 
-lemma starts_with_substring_sound (gp: p = Pattern.WholeString s1): starts_with s p ↔ List.IsPrefix s1 s := by
+lemma starts_with_substring_sound (gp: p = Pattern.WholeString ss): starts_with s p ↔ List.IsPrefix ss s := by
   rw[gp]; simp only [starts_with]; exact IsPrefix_isPrefixOf_EQ
 
-lemma starts_with_char_filter_append : starts_with_char_filter (a ++ b) f
-                  = starts_with_char_filter (if a = [] then b else a) f :=by
-  cases a; simp only [List.nil_append, ↓reduceIte]
+
+lemma starts_with_char_filter_append : starts_with_char_filter (s1 ++ s2) f
+                  = starts_with_char_filter (if s1 = [] then s2 else s1) f :=by
+  cases s1; simp only [List.nil_append, ↓reduceIte]
   simp only [cons_append, not_false_eq_true, not_sym, ↓reduceIte]
   unfold starts_with_char_filter; simp only
 
@@ -4015,7 +4051,7 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.ends_with
 
 def ends_with_char_filter (s: Str) (f: Char → Bool) := starts_with_char_filter s.reverse f
 
-lemma ends_with_char_filter_sound : ends_with_char_filter s f ↔  ∃ c s1, f c ∧ s = s1 ++ [c] :=by
+lemma ends_with_char_filter_sound : ends_with_char_filter s f ↔  ∃ c ss, f c ∧ s = ss ++ [c] :=by
   cases s; simp only [ends_with_char_filter, starts_with_char_filter, reverse_nil,
     not_false_eq_true, not_sym, nil_eq_append, and_false, exists_const, IsEmpty.forall_iff]
   rename_i h t; constructor
@@ -4032,13 +4068,13 @@ lemma ends_with_char_filter_sound : ends_with_char_filter s f ↔  ∃ c s1, f c
   simp only [ends_with_char_filter, starts_with_char_filter, g, reverse_append, reverse_cons,
     reverse_nil, List.nil_append, singleton_append]
 
-def ends_with (s: Str) (p: Pattern) := match p with
+def ends_with (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => ends_with_char_filter s (fun a => a == c)
   | Pattern.ListChar l => ends_with_char_filter s (fun a => a ∈ l)
   | Pattern.FilterFunction f => ends_with_char_filter s f
-  | Pattern.WholeString s1 => List.isSuffixOf s1 s
+  | Pattern.WholeString ss => List.isSuffixOf ss s
 
-lemma ends_with_substring_sound (gp: p = Pattern.WholeString s1): ends_with s p ↔  List.IsSuffix s1 s := by
+lemma ends_with_substring_sound (gp: p = Pattern.WholeString ss): ends_with s p ↔  List.IsSuffix ss s := by
   rw[gp]; simp only [ends_with]; unfold List.isSuffixOf List.IsSuffix
   constructor
   intro g; have g:= IsPrefix_isPrefixOf_EQ.mp g ; unfold List.IsPrefix at g; obtain⟨t,g⟩:=g
@@ -4047,11 +4083,11 @@ lemma ends_with_substring_sound (gp: p = Pattern.WholeString s1): ends_with s p 
   intro g; obtain ⟨t, g⟩ := g
   rw[IsPrefix_isPrefixOf_EQ]; unfold List.IsPrefix; use reverse t; simp only [← g, reverse_append]
 
-lemma ends_with_char_filter_append : ends_with_char_filter (a ++ b) f
-                  = ends_with_char_filter (if b = [] then a else b) f :=by
-  by_cases (b = []); rename_i gb; rw[gb]; simp only [List.append_nil, ↓reduceIte]
-  rename_i gb; simp only [ends_with_char_filter, reverse_append, starts_with_char_filter_append,
-    reverse_eq_nil_iff, gb, not_false_eq_true, not_sym, ↓reduceIte]
+lemma ends_with_char_filter_append : ends_with_char_filter (s1 ++ s2) f
+                  = ends_with_char_filter (if s2 = [] then s1 else s2) f :=by
+  by_cases (s2 = []); rename_i gs2; rw[gs2]; simp only [List.append_nil, ↓reduceIte]
+  rename_i gs2; simp only [ends_with_char_filter, reverse_append, starts_with_char_filter_append,
+    reverse_eq_nil_iff, gs2, not_false_eq_true, not_sym, ↓reduceIte]
 
 lemma append_partition_by_filter_unique (g1: s = a1 ++ b1) (g2: s = a2 ++ b2)
                   (g3: ¬ ends_with_char_filter a1 f) (g4: ¬ ends_with_char_filter a2 f)
@@ -4090,7 +4126,7 @@ From: str::core::split_terminator
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.split_terminator
 -/
 
-def split_terminator (s: Str) (p: Pattern) := if ends_with s p then (split s p).dropLast else (split s p)
+def split_terminator (s: Str) (P: Pattern) := if ends_with s P then (split s P).dropLast else (split s P)
 
 /-
 Function: rsplit_terminator
@@ -4098,7 +4134,7 @@ From: str::core::rsplit_terminator
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.rsplit_terminator
 -/
 
-def rsplit_terminator (s: Str) (p: Pattern) := List.reverse (split_terminator s p)
+def rsplit_terminator (s: Str) (P: Pattern) := List.reverse (split_terminator s P)
 
 /-
 Function: rust_repeat
@@ -4152,7 +4188,7 @@ def trim_start_matches_char_filter (s: Str) (f: Char → Bool):= match s with
   | h::t => if f h then trim_start_matches_char_filter t f else s
 
 theorem trim_start_matches_char_filter_sound :(trim_start_matches_char_filter s f = tss) ↔  (¬ starts_with_char_filter tss f) ∧
-                        (∃ pre, s = pre ++ tss ∧ (∀ m ∈ pre, f m) ) :=by
+                        (∃ pre, s = pre ++ tss ∧ (∀ c ∈ pre, f c) ) :=by
   induction s ;
   simp only [trim_start_matches_char_filter, Bool.not_eq_true, nil_eq_append]
   constructor; intro g; rw[← g]
@@ -4185,43 +4221,43 @@ theorem trim_start_matches_char_filter_sound :(trim_start_matches_char_filter s 
   rename_i hp tp; simp only [cons_append, cons.injEq, mem_cons] at gp; rw[← gp.left.left] at gp
   have gp:= gp.right h; simp only [true_or, gh, not_false_eq_true, not_sym, forall_true_left] at gp
 
-lemma length_pos_of_prefix_length_pos {s s1: Str} (g1: List.isPrefixOf s1 s = true) (g2: s1.length > 0) : s.length > 0 :=by
+lemma length_pos_of_prefix_length_pos {s p: Str} (g1: List.isPrefixOf p s = true) (g2: p.length > 0) : s.length > 0 :=by
   by_contra
   have : s.length = 0 := by omega
   have g:= eq_nil_of_length_eq_zero this
   rw [g, IsPrefix_isPrefixOf_EQ] at g1; simp only [prefix_nil] at g1;
   simp only [g1, length_nil, gt_iff_lt, lt_self_iff_false] at g2
 
-def trim_start_matches_substring (s: Str) (s1: Str):=
-  if s1.length > 0 then
-    if List.isPrefixOf s1 s then trim_start_matches_substring (s.drop (s1.length)) s1 else s
+def trim_start_matches_substring (s: Str) (ss: Str):=
+  if ss.length > 0 then
+    if List.isPrefixOf ss s then trim_start_matches_substring (s.drop (ss.length)) ss else s
     else s
 termination_by length s
 decreasing_by simp_wf; rename_i g2 g1; have := length_pos_of_prefix_length_pos g1 g2; omega
 
-theorem trim_start_matches_substring_sound (gs1: s1.length>0):(trim_start_matches_substring s s1 = tss) ↔  (¬ List.IsPrefix s1 tss) ∧
-                        (∃ n, s = (rust_repeat s1 n) ++ tss ) :=by
+theorem trim_start_matches_substring_sound (gss: ss.length>0):(trim_start_matches_substring s ss = trss) ↔  (¬ List.IsPrefix ss trss) ∧
+                        (∃ n, s = (rust_repeat ss n) ++ trss ) :=by
   generalize gls: s.length = ls
-  induction ls using Nat.strong_induction_on generalizing s tss
+  induction ls using Nat.strong_induction_on generalizing s trss
   rename_i ls ind
   by_cases (ls = 0); rename_i g1; rw[g1] at gls
   have gls:= List.eq_nil_of_length_eq_zero gls; rw[gls];
   unfold trim_start_matches_substring;
-  simp only [gt_iff_lt, gs1, ↓reduceIte, drop_nil, nil_eq_append, exists_and_right]
-  have : ¬ List.isPrefixOf s1 [] = true := by
+  simp only [gt_iff_lt, gss, ↓reduceIte, drop_nil, nil_eq_append, exists_and_right]
+  have : ¬ List.isPrefixOf ss [] = true := by
     by_contra; rename_i gc; rw[IsPrefix_isPrefixOf_EQ] at gc; unfold List.IsPrefix at gc
     simp only [append_eq_nil, exists_eq_right] at gc;
-    simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gs1
+    simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gss
   simp only [this, not_false_eq_true, not_sym, ↓reduceIte]
   constructor; intro g;
-  simp only [← g, prefix_nil, ne_eq, length_pos_from_not_nil, gt_iff_lt, gs1,
+  simp only [← g, prefix_nil, ne_eq, length_pos_from_not_nil, gt_iff_lt, gss,
     not_sym, not_false_eq_true, and_true, true_and]
   use 0; simp only [rust_repeat]
   intro g; symm; exact g.right.right
   unfold trim_start_matches_substring
-  simp only [gt_iff_lt, gs1, ↓reduceIte]
+  simp only [gt_iff_lt, gss, ↓reduceIte]
   split
-  generalize gm: (List.drop s1.length s).length = m
+  generalize gm: (List.drop ss.length s).length = m
   have id1: m < ls:= by rw[← gm, ← gls]; simp only [length_drop]; omega
   rw[(ind m id1 gm)];
   constructor;
@@ -4232,7 +4268,7 @@ theorem trim_start_matches_substring_sound (gs1: s1.length>0):(trim_start_matche
   rename_i g1 _; rw[IsPrefix_isPrefixOf_EQ] at g1;
   rw[prefix_append_drop g1] at g
   cases n; simp only [rust_repeat, List.nil_append] at g
-  have : List.IsPrefix s1 tss := by simp only [← g, prefix_append]
+  have : List.IsPrefix ss trss := by simp only [← g, prefix_append]
   contradiction
   rename_i n ; simp only [rust_repeat, List.append_assoc, append_cancel_left_eq] at g; use n
   constructor;
@@ -4241,15 +4277,16 @@ theorem trim_start_matches_substring_sound (gs1: s1.length>0):(trim_start_matche
   intro g; obtain⟨n, g⟩:= g.right;
   cases n; simp only [rust_repeat, List.nil_append] at g; exact g
   rename_i n; rw[rust_repeat, List.append_assoc] at g; rename_i g1 _; rw[IsPrefix_isPrefixOf_EQ] at g1;
-  have : List.IsPrefix s1 s := by simp only [g, prefix_append]
+  have : List.IsPrefix ss s := by simp only [g, prefix_append]
   contradiction
 
 
-def trim_start_matches (s: Str) (p: Pattern) := match p with
+
+def trim_start_matches (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => trim_start_matches_char_filter s (fun a => a == c)
   | Pattern.ListChar l => trim_start_matches_char_filter s (fun a => a ∈ l)
   | Pattern.FilterFunction f => trim_start_matches_char_filter s f
-  | Pattern.WholeString s1 => trim_start_matches_substring s s1
+  | Pattern.WholeString ss => trim_start_matches_substring s ss
 
 /-
 Function: trim_end_matches
@@ -4260,7 +4297,7 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.trim_end_ma
 def trim_end_matches_char_filter (s: Str) (f: Char → Bool):= List.reverse (trim_start_matches_char_filter (List.reverse s) f)
 
 theorem trim_end_matches_char_filter_sound : (trim_end_matches_char_filter s f = tes) ↔ (¬ ends_with_char_filter tes f) ∧
-               (∃ suf, s = tes ++ suf ∧ (∀ m ∈ suf, f m) ) :=by
+               (∃ suf, s = tes ++ suf ∧ (∀ c ∈ suf, f c) ) :=by
   simp only [ends_with_char_filter, trim_end_matches_char_filter, reverse_cons, reverse_reverse, Bool.not_eq_true]
   constructor; intro g
   have e1: trim_start_matches_char_filter (reverse s) f = reverse tes := by simp only [← g, reverse_reverse]
@@ -4277,25 +4314,26 @@ theorem trim_end_matches_char_filter_sound : (trim_end_matches_char_filter s f =
     apply trim_start_matches_char_filter_sound.mpr; simp only [g, not_false_eq_true, not_sym, this, and_self]
   simp only [this, reverse_reverse]
 
-def trim_end_matches_substring (s: Str) (s1: Str):= List.reverse (trim_start_matches_substring s.reverse s1.reverse)
+def trim_end_matches_substring (s: Str) (ss: Str):= List.reverse (trim_start_matches_substring s.reverse ss.reverse)
 
-lemma sub_trim_end_matches_substring_sound: ∀n, (s = tes ++ rust_repeat s1 n ↔ s.reverse = rust_repeat s1.reverse n ++ tes.reverse) :=by
+lemma sub_trim_end_matches_substring_sound: ∀ n, (s = tes ++ rust_repeat s1 n ↔ s.reverse = rust_repeat s1.reverse n ++ tes.reverse) :=by
   intro n; constructor; intro g; rw[g]; simp only [reverse_append, append_cancel_right_eq]; exact repeat_reverse
   intro g; rw[← repeat_reverse, reverse_iif] at g; simp only [reverse_reverse, reverse_append] at g; exact g
 
-theorem trim_end_matches_substring_sound (gs1: s1.length>0) :(trim_end_matches_substring s s1 = tes) ↔  (¬ List.IsSuffix s1 tes) ∧
-                        (∃ n, s = tes ++ (rust_repeat s1 n)) :=by
-  have gs1: s1.reverse.length > 0 :=by simp only [length_reverse, gt_iff_lt]; exact gs1
+theorem trim_end_matches_substring_sound (gss: ss.length>0) :(trim_end_matches_substring s ss = tes) ↔  (¬ List.IsSuffix ss tes) ∧
+                        (∃ n, s = tes ++ (rust_repeat ss n)) :=by
+  have gss: ss.reverse.length > 0 :=by simp only [length_reverse, gt_iff_lt]; exact gss
   simp only [trim_end_matches_substring]; rw[reverse_change_side]
-  rw(config:={occs:=.pos [2]})[← @reverse_reverse _ s1, ← @reverse_reverse _ tes]
+  rw(config:={occs:=.pos [2]})[← @reverse_reverse _ ss, ← @reverse_reverse _ tes]
   rw[List.reverse_suffix, exists_EQ sub_trim_end_matches_substring_sound]
-  exact trim_start_matches_substring_sound gs1 ;
+  exact trim_start_matches_substring_sound gss ;
 
-def trim_end_matches (s: Str) (p: Pattern) := match p with
+
+def trim_end_matches (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => trim_end_matches_char_filter s (fun a => a == c)
   | Pattern.ListChar l => trim_end_matches_char_filter s (fun a => a ∈ l)
   | Pattern.FilterFunction f => trim_end_matches_char_filter s f
-  | Pattern.WholeString s1 => trim_end_matches_substring s s1
+  | Pattern.WholeString ss => trim_end_matches_substring s ss
 
 /-
 Function: trim_matches
@@ -4318,7 +4356,7 @@ lemma sub_trim_matches_char_filter_sound1 : ¬ ends_with_char_filter s f →   �
 
 
 theorem trim_matches_char_filter_sound :(trim_matches_char_filter s f = trs) ↔ ¬ starts_with_char_filter trs f ∧ ¬ ends_with_char_filter trs f ∧
-            (∃ pre suf, s = pre ++ trs ++ suf ∧ (∀ m ∈ pre, f m) ∧ (∀ m ∈ suf, f m) ):= by
+            (∃ pre suf, s = pre ++ trs ++ suf ∧ (∀ c ∈ pre, f c) ∧ (∀ c ∈ suf, f c) ):= by
   unfold trim_matches_char_filter;
   generalize gt: trim_end_matches_char_filter s f = tes; rw[trim_end_matches_char_filter_sound] at gt;
   have i:= sub_trim_matches_char_filter_sound1 gt.left
@@ -4355,7 +4393,7 @@ theorem trim_matches_char_filter_sound :(trim_matches_char_filter s f = trs) ↔
 
 
 
-def trim_matches (s: Str) (p: Pattern) : Option Str := match p with
+def trim_matches (s: Str) (P: Pattern) : Option Str := match P with
   | Pattern.SingleChar c => some (trim_matches_char_filter s (fun a => a == c))
   | Pattern.ListChar l => some (trim_matches_char_filter s (fun a => a ∈ l))
   | Pattern.FilterFunction f => some (trim_matches_char_filter s f)
@@ -4421,53 +4459,53 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.replace
 -/
 
 
-def replace_substring (s s1 s2: Str) :=
-  if _h: s1.length > 0 then
-    match _t: substring_charpos s s1 with
+def replace_substring (s ss sr: Str) :=
+  if _h: ss.length > 0 then
+    match _t: substring_charpos s ss with
       | none => s
-      | some p => (s.take p) ++ s2 ++ (replace_substring (s.drop (p + s1.length)) s1 s2)
+      | some i => (s.take i) ++ sr ++ (replace_substring (s.drop (i + ss.length)) ss sr)
   else s
 termination_by length s
 decreasing_by simp_wf; have:= substring_charpos_terminate _t _h; simp only [_h, or_true, and_true,
   gt_iff_lt]; omega
 
-def replace_substring_def (s s1 s2: Str) := str_concat_pad (split_substring s s1) s2
+def replace_substring_def (s ss sr: Str) := str_concat_pad (split_substring s ss) sr
 
-theorem replace_substring_EQ (gs1: s1.length > 0)
-      : replace_substring s s1 s2 = replace_substring_def s s1 s2 :=by
+theorem replace_substring_EQ (gss: ss.length > 0)
+      : replace_substring s ss sr = replace_substring_def s ss sr :=by
   unfold replace_substring_def
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s
   rename_i l ind
-  have gs11: ¬ s1 = [] := by by_contra; rename_i gc; simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gs1
+  have gs11: ¬ ss = [] := by by_contra; rename_i gc; simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gss
   by_cases (l=0); rename_i gc; rw[gc] at gl
   have gl:=List.eq_nil_of_length_eq_zero gl; rw[gl]
   unfold split_substring replace_substring
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, List.nil_append, drop_nil, take_nil]
-  have : substring_charpos [] s1 = none := substring_charpos_of_nil gs1
+  simp only [gt_iff_lt, gss, ↓reduceDIte, List.nil_append, drop_nil, take_nil]
+  have : substring_charpos [] ss = none := substring_charpos_of_nil gss
   rw[this]; simp only [drop_nil, take_nil, str_concat_pad];
   unfold split_substring  replace_substring
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, List.append_assoc, drop_drop]
+  simp only [gt_iff_lt, gss, ↓reduceDIte, List.append_assoc, drop_drop]
   split; simp only [str_concat_pad]
-  rename_i p _;
+  rename_i i _;
   simp only [str_concat_pad, List.append_assoc]
-  have : split_substring (List.drop (p + s1.length) s) s1 ≠  [] := split_substring_ne_nil gs1
+  have : split_substring (List.drop (i + ss.length) s) ss ≠  [] := split_substring_ne_nil gss
   simp only [str_concat_pad.match_1.eq_2, append_cancel_left_eq]
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < l := by rw[← gm, ← gl]; simp only [length_drop]; omega
   exact ind m id1 gm
 
 
 --#eval replace_substring "this is old".data "is".data "an".data
 
-def replace_char_filter (s: Str) (f: Char → Bool) (s1: Str) := match s with
+def replace_char_filter (s: Str) (f: Char → Bool) (ss: Str) := match s with
   | [] => []
-  | h::t => if f h then s1 ++ (replace_char_filter t f s1) else h::(replace_char_filter t f s1)
+  | h::t => if f h then ss ++ (replace_char_filter t f ss) else h::(replace_char_filter t f ss)
 
-def replace_char_filter_def (s: Str) (f: Char → Bool) (s1: Str) := str_concat_pad (split_char_filter s f) s1
+def replace_char_filter_def (s: Str) (f: Char → Bool) (ss: Str) := str_concat_pad (split_char_filter s f) ss
 
-lemma sub_replace_char_filter_EQ: str_concat_pad (split_char_filter_aux s f (w::u)) s1
-                = w:: str_concat_pad (split_char_filter_aux s f u) s1 :=by
+lemma sub_replace_char_filter_EQ: str_concat_pad (split_char_filter_aux s f (w::u)) ss
+                = w:: str_concat_pad (split_char_filter_aux s f u) ss :=by
   induction s generalizing w u
   simp only [str_concat_pad]
   rename_i h t ind
@@ -4478,7 +4516,7 @@ lemma sub_replace_char_filter_EQ: str_concat_pad (split_char_filter_aux s f (w::
   exact ind
 
 theorem replace_char_filter_EQ
-      : replace_char_filter s f s1 = replace_char_filter_def s f s1:=by
+      : replace_char_filter s f ss = replace_char_filter_def s f ss:=by
   unfold replace_char_filter_def
   induction s
   simp only [replace_char_filter, str_concat_pad]
@@ -4492,11 +4530,11 @@ theorem replace_char_filter_EQ
 
 --#eval replace_char_filter "this is old".data Char.rust_isWhitespace "XX".data
 
-def replace (s: Str) (p: Pattern) (s2: Str):= match p with
-  | Pattern.SingleChar c => replace_char_filter s (fun x => x = c) s2
-  | Pattern.ListChar l => replace_char_filter s (fun x => x ∈ l) s2
-  | Pattern.FilterFunction f => replace_char_filter s f s2
-  | Pattern.WholeString s1 => replace_substring s s1 s2
+def replace (s: Str) (i: Pattern) (sr: Str):= match i with
+  | Pattern.SingleChar c => replace_char_filter s (fun x => x = c) sr
+  | Pattern.ListChar l => replace_char_filter s (fun x => x ∈ l) sr
+  | Pattern.FilterFunction f => replace_char_filter s f sr
+  | Pattern.WholeString ss => replace_substring s ss sr
 
 /-
 Function: replacen
@@ -4504,43 +4542,43 @@ From: str::core::replacen
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.replacen
 -/
 
-def replacen_substring (s s1 s2: Str) (n: Nat):=
-  if _h: s1.length > 0 then
+def replacen_substring (s ss sr: Str) (n: Nat):=
+  if _h: ss.length > 0 then
     if n > 0 then
-      match _t: substring_charpos s s1 with
+      match _t: substring_charpos s ss with
         | none => s
-        | some p => (s.take p) ++ s2 ++ (replacen_substring (s.drop (p + s1.length)) s1 s2 (n-1))
+        | some i => (s.take i) ++ sr ++ (replacen_substring (s.drop (i + ss.length)) ss sr (n-1))
     else s
   else s
 termination_by length s
 decreasing_by simp_wf; have:= substring_charpos_terminate _t _h; simp only [_h, or_true, and_true,
   gt_iff_lt]; omega
 
-def replacen_substring_def (s s1 s2: Str) (n:Nat):= str_concat_pad (splitn_substring s s1 (n+1) ) s2
+def replacen_substring_def (s ss sr: Str) (n:Nat):= str_concat_pad (splitn_substring s ss (n+1) ) sr
 
-theorem replacen_substring_EQ (gs1: s1.length > 0)
-      : replacen_substring s s1 s2 n= replacen_substring_def s s1 s2 n:=by
+theorem replacen_substring_EQ (gss: ss.length > 0)
+      : replacen_substring s ss sr n= replacen_substring_def s ss sr n:=by
   unfold replacen_substring_def
   generalize gl: s.length = l
   induction l using Nat.strong_induction_on generalizing s n
   rename_i l ind
-  have gs11: ¬ s1 = [] := by by_contra; rename_i gc; simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gs1
+  have gs11: ¬ ss = [] := by by_contra; rename_i gc; simp only [gc, length_nil, gt_iff_lt, lt_self_iff_false] at gss
   by_cases (l=0); rename_i gc; rw[gc] at gl
   have gl:=List.eq_nil_of_length_eq_zero gl; rw[gl]
   unfold splitn_substring replacen_substring
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, List.nil_append, drop_nil, take_nil]
-  have : substring_charpos [] s1 = none := substring_charpos_of_nil gs1
+  simp only [gt_iff_lt, gss, ↓reduceDIte, List.nil_append, drop_nil, take_nil]
+  have : substring_charpos [] ss = none := substring_charpos_of_nil gss
   rw[this]; simp only [drop_nil, take_nil, str_concat_pad];
   split; split; simp only [str_concat_pad]; split; simp only [str_concat_pad]; simp only [str_concat_pad]
   rename_i gn; simp only [not_lt, nonpos_iff_eq_zero] at gn; simp only [gn, ↓reduceIte, str_concat_pad]
   unfold splitn_substring  replacen_substring
-  simp only [gt_iff_lt, gs1, ↓reduceDIte, append_assoc, add_eq_zero, one_ne_zero, and_false,
+  simp only [gt_iff_lt, gss, ↓reduceDIte, append_assoc, add_eq_zero, one_ne_zero, and_false,
     not_false_eq_true, not_sym, ↓reduceIte, add_left_eq_self, add_tsub_cancel_right]
   split; split; split; omega; simp only [str_concat_pad]; split; omega
-  rename_i gn p _ _ ;
-  have : splitn_substring (List.drop (p + s1.length) s) s1 n ≠ [] := splitn_substring_ne_nil gs1 gn
+  rename_i gn i _ _ ;
+  have : splitn_substring (List.drop (i + ss.length) s) ss n ≠ [] := splitn_substring_ne_nil gss gn
   simp only [str_concat_pad, append_assoc, append_cancel_left_eq]
-  generalize gm: (List.drop (p + s1.length) s).length = m
+  generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < l := by rw[← gm, ← gl]; simp only [length_drop]; omega
   have ind:= @ind m id1 _ (n-1) gm
   have: n - 1 + 1 = n :=by omega
@@ -4548,17 +4586,18 @@ theorem replacen_substring_EQ (gs1: s1.length > 0)
   rename_i gn; simp only [not_lt, nonpos_iff_eq_zero] at gn;
   simp only [gn, ↓reduceIte, str_concat_pad]
 
-def replacen_char_filter (s: Str) (f: Char → Bool) (s1: Str) (n: Nat) :=
+
+def replacen_char_filter (s: Str) (f: Char → Bool) (sr: Str) (n: Nat) :=
   if (n > 0) then
     match s with
       | [] => []
-      | h::t => if f h then s1 ++ (replacen_char_filter t f s1 (n-1)) else h::(replacen_char_filter t f s1 n)
+      | h::t => if f h then sr ++ (replacen_char_filter t f sr (n-1)) else h::(replacen_char_filter t f sr n)
   else s
 
-def replacen_char_filter_def (s: Str) (f: Char → Bool) (s1: Str) (n: Nat) := str_concat_pad (splitn_char_filter s f (n+1)) s1
+def replacen_char_filter_def (s: Str) (f: Char → Bool) (sr: Str) (n: Nat) := str_concat_pad (splitn_char_filter s f (n+1)) sr
 
-lemma sub_replacen_char_filter_EQ (gn: n > 0):  str_concat_pad (splitn_char_filter_aux s f n (w::u) ) s1
-                = w:: str_concat_pad (splitn_char_filter_aux s f n u ) s1 :=by
+lemma sub_replacen_char_filter_EQ (gn: n > 0):  str_concat_pad (splitn_char_filter_aux s f n (w::u) ) sr
+                = w:: str_concat_pad (splitn_char_filter_aux s f n u ) sr :=by
   induction s generalizing w u n
   have gn: ¬ n = 0 := by omega
   simp only [splitn_char_filter_aux, gn, not_false_eq_true, not_sym, ↓reduceIte, append_nil,
@@ -4572,7 +4611,7 @@ lemma sub_replacen_char_filter_EQ (gn: n > 0):  str_concat_pad (splitn_char_filt
   exact ind (by assumption)
 
 theorem replacen_char_filter_EQ
-      : replacen_char_filter s f s1 n = replacen_char_filter_def s f s1 n:=by
+      : replacen_char_filter s f sr n = replacen_char_filter_def s f sr n:=by
   unfold replacen_char_filter_def
   induction s generalizing n
   simp only [replacen_char_filter, gt_iff_lt, ite_self, splitn_char_filter, splitn_char_filter_aux,
@@ -4594,11 +4633,12 @@ theorem replacen_char_filter_EQ
   simp only [gn, ↓reduceIte, str_concat_pad]
 
 
-def replacen (s: Str) (p: Pattern) (s2: Str) (n: Nat):= match p with
-  | Pattern.SingleChar c => replacen_char_filter s (fun x => x = c) s2 n
-  | Pattern.ListChar l => replacen_char_filter s (fun x => x ∈ l) s2 n
-  | Pattern.FilterFunction f => replacen_char_filter s f s2 n
-  | Pattern.WholeString s1 => replacen_substring s s1 s2 n
+
+def replacen (s: Str) (P: Pattern) (sr: Str) (n: Nat):= match P with
+  | Pattern.SingleChar c => replacen_char_filter s (fun x => x = c) sr n
+  | Pattern.ListChar l => replacen_char_filter s (fun x => x ∈ l) sr n
+  | Pattern.FilterFunction f => replacen_char_filter s f sr n
+  | Pattern.WholeString ss => replacen_substring s ss sr n
 
 /-
 Function: strip_prefix
@@ -4610,7 +4650,7 @@ def strip_prefix_char_filter (s: Str) (f: Char → Bool) := match s with
   | [] => none
   | h::t => if f h then some t else none
 
-theorem strip_prefix_char_filter_none_sound : strip_prefix_char_filter s f = none ↔ ¬ ∃ c t, s = c::t ∧ f c :=by
+theorem strip_prefix_char_filter_none_sound : strip_prefix_char_filter s f = none ↔ ¬ ∃ h t, s = h::t ∧ f h :=by
   unfold strip_prefix_char_filter; constructor
   split; simp only [not_false_eq_true, not_sym, false_and, exists_const, forall_true_left]
   split; simp only [cons.injEq, exists_and_right, exists_and_left, exists_eq', and_true,
@@ -4623,7 +4663,7 @@ theorem strip_prefix_char_filter_none_sound : strip_prefix_char_filter s f = non
   split; simp_all only [cons.injEq, and_imp, forall_apply_eq_imp_iff, forall_eq', not_false_eq_true,not_sym]
   simp only
 
-theorem strip_prefix_char_filter_some_sound : strip_prefix_char_filter s f = some t ↔  ∃ c, s = c::t ∧ f c :=by
+theorem strip_prefix_char_filter_some_sound : strip_prefix_char_filter s f = some t ↔  ∃ h, s = h::t ∧ f h :=by
   unfold strip_prefix_char_filter; constructor
   split ; simp only [not_false_eq_true, not_sym, false_and, exists_const, IsEmpty.forall_iff]
   split; simp_all only [Option.some.injEq, cons.injEq, and_true, exists_eq_left', implies_true]
@@ -4653,7 +4693,7 @@ theorem strip_prefix_substring_some_sound : strip_prefix_substring s p = some t 
   simp only [g, drop_left]
 
 
-def strip_prefix (s: Str) (p: Pattern) := match p with
+def strip_prefix (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => strip_prefix_char_filter s (fun x => x = c)
   | Pattern.ListChar l => strip_prefix_char_filter s (fun x => x ∈ l)
   | Pattern.FilterFunction f => strip_prefix_char_filter s f
@@ -4708,11 +4748,11 @@ theorem strip_suffix_char_filter_some_sound : strip_suffix_char_filter s f = som
 
 def strip_suffix_substring (s: Str) (p: Str) : Option Str := if List.isSuffixOf p s then some (s.take (s.length - p.length)) else none
 
-def strip_suffix (s: Str) (p: Pattern) := match p with
+def strip_suffix (s: Str) (P: Pattern) := match P with
   | Pattern.SingleChar c => strip_suffix_char_filter s (fun x => x = c)
   | Pattern.ListChar l => strip_suffix_char_filter s (fun x => x ∈ l)
   | Pattern.FilterFunction f => strip_suffix_char_filter s f
-  | Pattern.WholeString s1 => strip_suffix_substring s s1
+  | Pattern.WholeString ss => strip_suffix_substring s ss
 
 theorem strip_suffix_substring_none_sound : strip_suffix_substring s p = none ↔ ¬ List.IsSuffix p s :=by
   unfold strip_suffix_substring

@@ -21,7 +21,7 @@ Lean: let x:= s.next.1
 
 namespace Iterator
 
-def next (s: List a) : (Option a) × List a := match s with
+def next (s: List α) : (Option α) × List α := match s with
   | [] => (none , [])
   | h::t => (some h, t)
 
@@ -29,7 +29,7 @@ def next (s: List a) : (Option a) × List a := match s with
 peek
 -/
 
-def peek (s: List a) : Option a := match s with
+def peek (s: List α) : Option α := match s with
   | [] => none
   | _::[] => none
   | _::h1::_ => some h1
@@ -39,7 +39,7 @@ flatten
 From: core::iter::adapers::flatten
 -/
 
-def flatten (s: List (List a)):= List.foldl List.append [] s
+def flatten (s: List (List α)):= List.foldl List.append [] s
 
 lemma fold_append_cons: List.foldl List.append (v::u) s = v:: List.foldl List.append u s :=by
   induction s generalizing v u; simp only [foldl_nil]

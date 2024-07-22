@@ -85,10 +85,10 @@ theorem LCP_length_correct : LCP_length s1 s2 = l ↔ is_LCP_length s1 s2 l := b
                       and a main functions which assign initial values for those parameters
   For example:    -/
 
-def LCP_length_aux (s1 s2: Str) (p: Nat) := match s1, s2 with
-  | [] , _ => p
-  | _, [] => p
-  | h1::t1, h2::t2 => if h1 ≠ h2 then p else LCP_length_aux t1 t2 (p+1)
+def LCP_length_aux (s1 s2: Str) (k: Nat) := match s1, s2 with
+  | [] , _ => k
+  | _, [] => k
+  | h1::t1, h2::t2 => if h1 ≠ h2 then k else LCP_length_aux t1 t2 (k+1)
 
 def LCP_length_version2 (s1 s2: Str) := LCP_length_aux s1 s2 0
 
@@ -109,8 +109,8 @@ def LCP_length_version2 (s1 s2: Str) := LCP_length_aux s1 s2 0
 
 --Here is the demonstration of the first way
 
-lemma LCP_length_aux_EQ : LCP_length_aux s1 s2 p = p + LCP_length s1 s2 :=by
-  induction s1 generalizing p s2
+lemma LCP_length_aux_EQ : LCP_length_aux s1 s2 k = k + LCP_length s1 s2 :=by
+  induction s1 generalizing k s2
   simp only [LCP_length_aux, LCP_length, add_zero]
   rename_i h1 t1 ind
   cases s2
@@ -126,8 +126,8 @@ theorem LCP_length_EQ_first_way : LCP_length_version2 s1 s2  = LCP_length s1 s2 
 
 --Here is the demonstration of the second way
 
-lemma LCP_length_aux_para1_elim: LCP_length_aux s1 s2 p = p + LCP_length_aux s1 s2 0 :=by
-  induction s1 generalizing p s2
+lemma LCP_length_aux_para1_elim: LCP_length_aux s1 s2 k = k + LCP_length_aux s1 s2 0 :=by
+  induction s1 generalizing k s2
   simp only [LCP_length_aux, add_zero]
   rename_i h1 t1 ind
   cases s2
@@ -161,17 +161,17 @@ theorem LCP_length_EQ_second_way : LCP_length_version2 s1 s2  = LCP_length s1 s2
 -/
 
 /-The function "LCS_length" should calculate the length of the longest common substring of the two strings s1 s2-/
-def LCS_length_aux (s1 s2: Str) (p: Nat) := match s1, s2 with
-  | [] , _ => p
-  | _, [] => p
-  | h1::t1, h2::t2 => if h1 ≠ h2 then Nat.max (Nat.max (LCS_length_aux (h1::t1) t2 0) (LCS_length_aux t1 (h2::t2) 0)) p
-                      else Nat.max (Nat.max (LCS_length_aux (h1::t1) t2 0) (LCS_length_aux t1 (h2::t2) 0)) (LCS_length_aux t1 t2 (p+1))
+def LCS_length_aux (s1 s2: Str) (k: Nat) := match s1, s2 with
+  | [] , _ => k
+  | _, [] => k
+  | h1::t1, h2::t2 => if h1 ≠ h2 then Nat.max (Nat.max (LCS_length_aux (h1::t1) t2 0) (LCS_length_aux t1 (h2::t2) 0)) k
+                      else Nat.max (Nat.max (LCS_length_aux (h1::t1) t2 0) (LCS_length_aux t1 (h2::t2) 0)) (LCS_length_aux t1 t2 (k+1))
 termination_by s1.length + s2.length
 
 def LCS_length (s1 s2: Str) := LCS_length_aux s1 s2 0
 
-def is_LCS_length (s1 s2) (p:Nat):= (∀ s, (contains_substring s1 s ∧ contains_substring s2 s) → s.length ≤ p )
-                            ∧ (∃ s, (contains_substring s1 s ∧ contains_substring s2 s ∧ s.length = p))
+def is_LCS_length (s1 s2) (k:Nat):= (∀ s, (contains_substring s1 s ∧ contains_substring s2 s) → s.length ≤ k )
+                            ∧ (∃ s, (contains_substring s1 s ∧ contains_substring s2 s ∧ s.length = k))
 
 /- Here are some supporting lemmas, the main lemma "LCS_length_correct_mp" at line 355-/
 
@@ -221,7 +221,7 @@ lemma is_LCS_length_unique : unique (is_LCS_length s1 s2)  :=by
   have g2:= g2.left u1 ⟨gt1.left, gt1.right.left⟩
   omega
 
-lemma LCP_length_le_LCS_length: is_LCS_length s1 s2 p → LCP_length s1 s2 ≤ p := by
+lemma LCP_length_le_LCS_length: is_LCS_length s1 s2 k → LCP_length s1 s2 ≤ k := by
   intro g
   generalize gl: LCP_length s1 s2 = l
   obtain ⟨pre, gl⟩ := (LCP_length_correct_mp gl).left
@@ -282,9 +282,9 @@ lemma is_LCS_length_add_head_left_right : (is_LCS_length t1 t2 lct) →  (is_LCS
     omega
 
 
-lemma LCP_length_aux_para1_add1_le: LCS_length_aux s1 s2 (p + 1) ≤ 1 + LCS_length_aux s1 s2 p := by
+lemma LCP_length_aux_para1_add1_le: LCS_length_aux s1 s2 (k + 1) ≤ 1 + LCS_length_aux s1 s2 k := by
   generalize gl: s1.length + s2.length = l
-  induction l using Nat.strong_induction_on generalizing s1 s2 p
+  induction l using Nat.strong_induction_on generalizing s1 s2 k
   rename_i l ind
   unfold LCS_length_aux
   split; omega; omega;
@@ -292,12 +292,12 @@ lemma LCP_length_aux_para1_add1_le: LCS_length_aux s1 s2 (p + 1) ≤ 1 + LCS_len
   split; exact max_add_right;
   generalize gm: t1.length + t2.length=m
   have id1: m < l := by rw[← gm, ← gl]; simp only [length_cons]; omega
-  have ind:= @ind m id1 t1 t2 (p+1) gm
-  have i1: ((LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0)).max (LCS_length_aux t1 t2 (p + 1 + 1)) ≤
-        ((LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0)).max (1 + LCS_length_aux t1 t2 (p + 1)) := max_le_of_right_le ind
-  have i2:((LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0)).max (LCS_length_aux t1 t2 (p + 1) + 1) ≤
-        1 + ((LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0)).max (LCS_length_aux t1 t2 (p + 1)) := max_add_right
-  have e: LCS_length_aux t1 t2 (p + 1) + 1 = 1 + LCS_length_aux t1 t2 (p + 1) := by omega
+  have ind:= @ind m id1 t1 t2 (k+1) gm
+  have i1: ((LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0)).max (LCS_length_aux t1 t2 (k + 1 + 1)) ≤
+        ((LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0)).max (1 + LCS_length_aux t1 t2 (k + 1)) := max_le_of_right_le ind
+  have i2:((LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0)).max (LCS_length_aux t1 t2 (k + 1) + 1) ≤
+        1 + ((LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0)).max (LCS_length_aux t1 t2 (k + 1)) := max_add_right
+  have e: LCS_length_aux t1 t2 (k + 1) + 1 = 1 + LCS_length_aux t1 t2 (k + 1) := by omega
   rw[e] at i2 ; omega
 
 
@@ -360,13 +360,13 @@ as the parameter manipulating lemmas.
 The design of the right-hand-side requires some back and forth.
 -/
 lemma LCS_length_correct_mp: (LCS_length s1 s2  = lc) →  (is_LCS_length s1 s2 lc ∧
-      ((∃ pre,List.IsPrefix pre s1  ∧ List.IsPrefix pre s2 ∧ is_LCS_length s1 s2 pre.length ) → LCS_length_aux s1 s2 p = p + lc) ∧
+      ((∃ pre,List.IsPrefix pre s1  ∧ List.IsPrefix pre s2 ∧ is_LCS_length s1 s2 pre.length ) → LCS_length_aux s1 s2 k = k + lc) ∧
       ((¬ ∃ pre, List.IsPrefix pre s1  ∧ List.IsPrefix pre s2 ∧ is_LCS_length s1 s2 pre.length)
-       → ((p + LCP_length s1 s2 ≤ lc →  LCS_length_aux s1 s2 p = LCS_length_aux s1 s2 0) ∧
-          (p + LCP_length s1 s2 > lc →  LCS_length_aux s1 s2 p = p + LCP_length s1 s2  )  ) )):=by
+       → ((k + LCP_length s1 s2 ≤ lc →  LCS_length_aux s1 s2 k = LCS_length_aux s1 s2 0) ∧
+          (k + LCP_length s1 s2 > lc →  LCS_length_aux s1 s2 k = k + LCP_length s1 s2  )  ) )):=by
   --cleaning trivial cases
   generalize gl: s1.length + s2.length = l
-  induction l using Nat.strong_induction_on generalizing s1 s2 p lc
+  induction l using Nat.strong_induction_on generalizing s1 s2 k lc
   rename_i l ind
   intro g; have gsv:= g; unfold LCS_length LCS_length_aux at g
   split at g
@@ -389,8 +389,8 @@ lemma LCS_length_correct_mp: (LCS_length s1 s2  = lc) →  (is_LCS_length s1 s2 
   generalize gm: t1.length + t2.length = m
   have id1: m < l := by rw[← gm, ← gl]; simp only [length_cons]; omega
   generalize gt: LCS_length_aux t1 t2 0 = lct
-  have indtp1:= @ind m id1 t1 t2 lct (p+1) gm gt
-  have indtp:= @ind m id1 t1 t2 lct p gm gt
+  have indtp1:= @ind m id1 t1 t2 lct (k+1) gm gt
+  have indtp:= @ind m id1 t1 t2 lct k gm gt
   have indt1:= @ind m id1 t1 t2 lct 1 gm gt
   have ilch1:= is_LCS_length_add_head_left indt1.left indh1
   have ilch2:= is_LCS_length_add_head_right indt1.left indh2
@@ -490,19 +490,19 @@ lemma LCS_length_correct_mp: (LCS_length s1 s2  = lc) →  (is_LCS_length s1 s2 
         have gp1:= lcp_is_LCS_length gp glc; have gp2:= lcp_is_LCS_length gc indt1.left;
         simp only [LCP_length, gh, ne_eq, not_true_eq_false, ↓reduceIte] at gp1
         have e2:= indtp1.right.left gc
-        have: (LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≤ LCS_length_aux t1 t2 (p + 1) := by omega
+        have: (LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≤ LCS_length_aux t1 t2 (k + 1) := by omega
         simp only [this, max_eq_right]; omega
       . rename_i gc
         have e1 := sup_LCS_correct2 gp gc glc indt1.left
         have e2:= (indt1.right.right gc).left (by omega)
-        by_cases (p + 1 + LCP_length t1 t2 ≤ lct)
+        by_cases (k + 1 + LCP_length t1 t2 ≤ lct)
         . rename_i gp1
           have e1:= (indtp1.right.right gc).left gp1
-          have e3: p = 0 := by omega
+          have e3: k = 0 := by omega
           rw[e1, ← e2, gh, g, e3]; simp only [zero_add]
         . rename_i gp1; simp only [not_le] at gp1
           have e1:= (indtp1.right.right gc).right gp1
-          have : (LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≤ LCS_length_aux t1 t2 (p + 1) := by omega
+          have : (LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≤ LCS_length_aux t1 t2 (k + 1) := by omega
           simp only [this, max_eq_right]; omega
     . rename_i gh;
       simp only [ne_eq, gh, not_false_eq_true, not_sym, ↓reduceIte, le_max_iff, _root_.zero_le, or_self, max_eq_left] at g
@@ -530,16 +530,16 @@ lemma LCS_length_correct_mp: (LCS_length s1 s2  = lc) →  (is_LCS_length s1 s2 
           have e2:= indt1 (by omega)
           rw[e1,← e2]
         . have e2:= (indtp.right.right this).left (by omega)
-          have i1:= @LCP_length_aux_para1_add1_le t1 t2 p
+          have i1:= @LCP_length_aux_para1_add1_le t1 t2 k
           have i2 := LCP_length_ne_LCS_length this indtp.left
           have indt1:= indt1 (by omega)
           have i3: (LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≥ LCS_length_aux t1 t2 1 :=by omega
           rw[gh] at i3; simp only [i3, max_eq_left] at g
-          have i4: (LCS_length_aux (h2 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≥ LCS_length_aux t1 t2 (p+1) :=by omega
+          have i4: (LCS_length_aux (h2 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≥ LCS_length_aux t1 t2 (k+1) :=by omega
           rw[gh]; simp only [i3, i4, max_eq_left]
       . intro glcp
         have indtp1:= indtp1.right (by omega)
-        have: (LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≤ LCS_length_aux t1 t2 (p + 1):= by omega
+        have: (LCS_length_aux (h1 :: t1) t2 0).max (LCS_length_aux t1 (h2 :: t2) 0) ≤ LCS_length_aux t1 t2 (k + 1):= by omega
         simp only [this, max_eq_right]; omega
     . rename_i gh; simp only [ne_eq, gh, not_false_eq_true, not_sym, ↓reduceIte, le_max_iff,
       _root_.zero_le, or_self, max_eq_left] at g
@@ -552,3 +552,4 @@ lemma LCS_length_correct_mp: (LCS_length s1 s2  = lc) →  (is_LCS_length s1 s2 
 theorem LCS_length_correct: LCS_length s1 s2  = l ↔ is_LCS_length s1 s2 l :=by
   apply mpr_of_unique _ is_LCS_length_unique
   intro l g; exact (@LCS_length_correct_mp s1 s2 l 1 g).left
+

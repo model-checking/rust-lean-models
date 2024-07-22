@@ -25,14 +25,14 @@ lemma exists_minima_prop_nat {p: Nat → Prop} : (∃ x , p x) → ∃ m, (p m) 
     have ind:= ind m gm.left gm.right ; obtain⟨x,gx⟩:= ind
     use x;
 
-lemma imp_eq_not_or: (a → b) ↔  (¬ a ∨ b) :=by
+lemma imp_eq_not_or: (p → q) ↔  (¬ p ∨ q) :=by
   constructor ;
-  intro g ; by_cases a;
+  intro g ; by_cases p;
   rename_i g1; simp only [g g1, g1, not_true_eq_false, false_or];
   rename_i g1; simp only [g1,not_false_eq_true, true_or]
   intro g; cases g; rename_i g1; simp only [g1, false_implies]; rename_i g1; simp only [g1, implies_true]
 
-def unique {a: Type} (p: a → Prop) : Prop := ∀ x1 x2, p x1 → p x2 → x1 = x2
+def unique {α : Type} (p: α → Prop) : Prop := ∀ x1 x2, p x1 → p x2 → x1 = x2
 
 theorem mpr_of_unique : (∀ y, (x = y) → p y) → unique p → (∀ y, ((x = y) ↔  p y)) := by
   intro g1 g2 y; constructor; exact g1 y; intro g3
@@ -42,15 +42,15 @@ theorem mpr_of_unique : (∀ y, (x = y) → p y) → unique p → (∀ y, ((x = 
 @[simp]
 lemma not_sym :  ¬ x = y →  ¬ y = x := by intro g; by_contra; rename_i g1; symm at g1; contradiction
 
-lemma exists_EQ {a: Type} {p q : a → Prop}: (∀ n, p n  ↔ q n) → ((∃ m, p m) ↔ (∃ m, q m)) :=by
+lemma exists_EQ {α: Type} {p q : α → Prop}: (∀ x, p x  ↔ q x) → ((∃ y, p y) ↔ (∃ y, q y)) :=by
   intro g; constructor
-  intro gm ; obtain ⟨m,gm⟩ := gm ; rw[g m] at gm ; use m
-  intro gm ; obtain ⟨m,gm⟩ := gm ; rw[← g m] at gm ; use m
+  intro gy ; obtain ⟨y,gy⟩ := gy ; rw[g y] at gy ; use y
+  intro gy ; obtain ⟨y,gy⟩ := gy ; rw[← g y] at gy ; use y
 
 
 -- NAT
-lemma cases_max : x = Nat.max a b → (x=a) ∨ (x=b) :=by
-  by_cases a ≤ b ; intro g; rename_i g0; simp only [g0, max_eq_right] at g; simp only [g, or_true]
+lemma cases_max : x = Nat.max m n → (x=m) ∨ (x=n) :=by
+  by_cases m ≤ n ; intro g; rename_i g0; simp only [g0, max_eq_right] at g; simp only [g, or_true]
   intro g; rename_i g0; simp only [not_le] at g0; have g0:= le_of_lt g0;
   simp only [g0, max_eq_left] at g; simp only [g, true_or]
 
@@ -61,9 +61,9 @@ lemma max_add_right : Nat.max a (b+c) ≤ c + Nat.max a b :=by
   omega
 
 
-lemma max_le_of_right_le: b ≤ c → Nat.max a b ≤ Nat.max a c := by
+lemma max_le_of_right_le: n ≤ k → Nat.max m n ≤ Nat.max m k := by
   intro g
-  by_cases a ≤ b; rename_i g; simp only [g, max_eq_right, le_max_iff]; omega
+  by_cases m ≤ n; rename_i g; simp only [g, max_eq_right, le_max_iff]; omega
   rename_i g; simp only [not_le] at g; have g:= le_of_lt g; simp only [g, max_eq_left, le_max_iff, le_refl, true_or]
 
 lemma map_add_sub {l: List  Nat}:  List.map (fun x => x - c) (List.map (fun x => x + c) l) = l := by
@@ -72,7 +72,7 @@ lemma map_add_sub {l: List  Nat}:  List.map (fun x => x - c) (List.map (fun x =>
     ext x; simp only [Function.comp_apply, add_tsub_cancel_right]
   rw[this]; simp only [map_id']
 
-lemma map_sub_add {l: List  Nat} (g: ∀ m ∈ l, m ≥ c): List.map (fun x => x + c) (List.map (fun x => x - c) l) = l := by
+lemma map_sub_add {l: List Nat} (g: ∀ x ∈ l, x ≥ c): List.map (fun x => x + c) (List.map (fun x => x - c) l) = l := by
   simp only [map_map]
   induction l; simp only [map_nil]
   rename_i h t ind
@@ -166,7 +166,7 @@ lemma list_nat_zero_to_le : ∀ m ∈ (list_nat_zero_to n), m ≤ n :=by
 
 --LIST
 
-lemma exist_last_mem : l.length > 0 → ∃ s m, l = s ++ [m] :=by
+lemma exist_last_mem : l.length > 0 → ∃ s c, l = s ++ [c] :=by
   generalize gr: reverse l = r
   cases r; simp only [reverse_eq_nil_iff] at gr; simp only [gr, length_nil, gt_iff_lt,
     lt_self_iff_false, nil_eq_append, and_false, not_false_eq_true, not_sym, exists_false,
@@ -187,19 +187,19 @@ lemma getLast?_cons_cons : (h1::h2::t).getLast? = (h2::t).getLast? := by
   rw(config:={occs:= .pos [1]}) [getLast?] ;
   simp only; unfold getLast getLast?; simp only
 
-lemma getLast?_cons_tail_ne_nil: t≠ [] → (h::t).getLast? = t.getLast? :=by
+lemma getLast?_cons_tail_ne_nil: t ≠ [] → (h::t).getLast? = t.getLast? :=by
   cases t; simp only [ne_eq, not_true_eq_false, dropLast_single, dropLast_nil, not_false_eq_true,
     not_sym, IsEmpty.forall_iff]
   simp only [ne_eq, not_false_eq_true, not_sym, forall_true_left]
   rw[List.getLast?_cons, List.getLast?_cons]
   simp only [getLastD_cons]
 
-lemma dropLast_neq_nil :a.length > 1 →  List.dropLast a = List.dropLast b → b ≠ []:= by
-  cases a; simp only [length_nil, gt_iff_lt, not_lt_zero', dropLast_nil, IsEmpty.forall_iff]
-  rename_i ha ta; cases ta; simp only [List.length_singleton, gt_iff_lt, lt_self_iff_false,
+lemma dropLast_neq_nil :s1.length > 1 →  List.dropLast s1 = List.dropLast s2 → s2 ≠ []:= by
+  cases s1; simp only [length_nil, gt_iff_lt, not_lt_zero', dropLast_nil, IsEmpty.forall_iff]
+  rename_i h1 t1; cases t1; simp only [List.length_singleton, gt_iff_lt, lt_self_iff_false,
     dropLast_single, IsEmpty.forall_iff]
   simp only [length_cons, gt_iff_lt, one_lt_succ_succ, dropLast_cons₂, forall_true_left]
-  cases b; simp only [dropLast_nil, not_false_eq_true, not_sym, ne_eq, not_true_eq_false,
+  cases s2; simp only [dropLast_nil, not_false_eq_true, not_sym, ne_eq, not_true_eq_false,
     IsEmpty.forall_iff]
   simp only [ne_eq, not_false_eq_true, not_sym, implies_true]
 
@@ -212,11 +212,11 @@ lemma dropLast_append_getLast : s = s.dropLast ++ [(s.getLast a)] :=by
   rw[getLast_cons' a this] ; apply ind
 
 
-lemma reverse_iif {l1 l2 : List a}: l1 = l2 ↔ l1.reverse = l2.reverse :=by
+lemma reverse_iif {l1 l2 : List α}: l1 = l2 ↔ l1.reverse = l2.reverse :=by
   constructor; intro g; rw[g]
   intro g; rw[← @reverse_reverse _ l1, ← @reverse_reverse _ l2, g]
 
-lemma reverse_change_side {l1 l2 : List a}: l1.reverse = l2 ↔ l1 = l2.reverse :=by
+lemma reverse_change_side {l1 l2 : List α}: l1.reverse = l2 ↔ l1 = l2.reverse :=by
   rw[reverse_iif, reverse_reverse];
 
 
@@ -264,7 +264,7 @@ lemma prefix_eq_take (h: List.IsPrefix p s) : s.take p.length = p := by
   apply prefix_eq_of_length_eq e1 h e2
 
 @[simp]
-lemma prefix_cons {u: Type} {hp hs : u} {tp ts : List u} :
+lemma prefix_cons {α : Type} {hp hs : α} {tp ts : List α} :
   List.IsPrefix (hp::tp) (hs::ts) →  (hp = hs) ∧ (List.IsPrefix tp ts) :=by
   intro h
   unfold List.IsPrefix at h
@@ -279,28 +279,28 @@ lemma prefix_cons_mpr  {u: Type} {tp ts: List u} (h: List.IsPrefix tp ts) (a:u)
   obtain ⟨q,hq⟩ := h
   unfold List.IsPrefix; use q; simp only [cons_append, hq]
 
-lemma prefix_map {p s: List Char}  (h: List.IsPrefix p s) (f: Char → Nat): List.IsPrefix (List.map f p)  (List.map f s) :=by
+lemma prefix_map {p s: List Char}  (g: List.IsPrefix p s) (f: Char → Nat): List.IsPrefix (List.map f p)  (List.map f s) :=by
   induction s generalizing p
-  simp only [prefix_nil] at h; simp only [h, map_nil, self_prefix]
+  simp only [prefix_nil] at g; simp only [g, map_nil, self_prefix]
   rename_i hs ts ind
   cases p; simp only [map_nil, map_cons, _root_.nil_prefix]
   rename_i hp tp
-  have h := prefix_cons h
-  simp only [map_cons, h];
-  have := ind (h.right)
+  have g := prefix_cons g
+  simp only [map_cons, g];
+  have := ind (g.right)
   apply (prefix_cons_mpr this (f hs))
 
-lemma prefix_trans (h1: List.IsPrefix p s) (h2: List.IsPrefix s t) :  List.IsPrefix p t :=by
-  unfold List.IsPrefix at h1 h2
+lemma prefix_trans (g1: List.IsPrefix p s) (g2: List.IsPrefix s t) :  List.IsPrefix p t :=by
+  unfold List.IsPrefix at g1 g2
   unfold List.IsPrefix
-  obtain ⟨q,hq⟩ := h1
-  obtain ⟨r,hr⟩ := h2
+  obtain ⟨q,hq⟩ := g1
+  obtain ⟨r,hr⟩ := g2
   use q++r;
   rw [← List.append_assoc]; rw[hq, hr]
 
-lemma prefix_mem (h: List.IsPrefix p s) (h2: m ∈ p) : m ∈ s := by
-  unfold List.IsPrefix at h; obtain ⟨q,hq⟩ := h
-  rw[← hq] ; apply List.mem_append_left q h2
+lemma prefix_mem (g: List.IsPrefix p s) (g2: m ∈ p) : m ∈ s := by
+  unfold List.IsPrefix at g; obtain ⟨q,hq⟩ := g
+  rw[← hq] ; apply List.mem_append_left q g2
 
 lemma prefix_append_or : List.IsPrefix (l1 ++ t1) (l2 ++ t2)
           → (List.IsPrefix l1 l2) ∨ (List.IsPrefix l2 l1) :=by
@@ -359,7 +359,7 @@ lemma IsPrefix_isPrefixOf_EQ {p : List Char} : List.isPrefixOf p l ↔  List.IsP
   have p1: List.IsPrefix ais bis := h
   apply ind p1 hi
 
-lemma prefix_append_drop : List.IsPrefix s1 s → s = s1 ++ (s.drop s1.length) := by
+lemma prefix_append_drop : List.IsPrefix p s → s = p ++ (s.drop p.length) := by
   intro g; have i:= prefix_eq_take g;
   rw(config:={occs:=.pos [1]})[← i]; simp only [take_append_drop]
 
@@ -389,48 +389,48 @@ lemma take_append_suffix (g: List.IsSuffix p s): s = List.take (s.length - p.len
 ZIP and UNZIP
 -/
 
-lemma unzip_s (hs: s= List.zip s1 s2):
+lemma unzip_s (gs: s= List.zip s1 s2):
   (s.unzip.2 = s2.take s.length) ∧  (s.unzip.1 = s1.take s.length) := by
   induction s generalizing s1 s2;
   simp only [unzip_nil, length_nil, take_zero, and_self]
   rename_i h t ind
   simp only [unzip_cons, length_cons]
   cases s1; cases s2
-  simp only [zip_nil_right, not_false_eq_true, not_sym] at hs
-  simp only [zip_nil_left, not_false_eq_true, not_sym] at hs
+  simp only [zip_nil_right, not_false_eq_true, not_sym] at gs
+  simp only [zip_nil_left, not_false_eq_true, not_sym] at gs
   cases s2
-  simp only [zip_nil_right, not_false_eq_true, not_sym] at hs
-  simp only [zip_cons_cons, cons.injEq] at hs
+  simp only [zip_nil_right, not_false_eq_true, not_sym] at gs
+  simp only [zip_cons_cons, cons.injEq] at gs
   simp_all only [length_zip, take_cons_succ, and_self]
 
-lemma unzip_eq_left_shorter (hs: s= List.zip s1 s2) (hl: s1.length ≤ s2.length):
+lemma unzip_eq_left_shorter (gs: s= List.zip s1 s2) (gl: s1.length ≤ s2.length):
    s.unzip.1 = s1 := by
-  have z := (unzip_s hs).right
+  have z := (unzip_s gs).right
   simp_all only [length_zip, ge_iff_le, min_eq_left, take_length]
 
-lemma unzip_eq_right_shorter (hs: s= List.zip s1 s2) (hl: s2.length ≤ s1.length):
+lemma unzip_eq_right_shorter (gs: s= List.zip s1 s2) (gl: s2.length ≤ s1.length):
    s.unzip.2 = s2 := by
-  have z := (unzip_s hs).left
+  have z := (unzip_s gs).left
   simp_all only [length_zip, ge_iff_le, min_eq_right, take_length]
 
-lemma nil_zip_left {v: Type} {a: v}(h: List.zip [a] b = []) : b = [] :=by
-  unfold List.zip  at h
-  have := List.zipWith_eq_nil_iff.mp h
+lemma nil_zip_left (g: List.zip [a] b = []) : b = [] :=by
+  unfold List.zip  at g
+  have := List.zipWith_eq_nil_iff.mp g
   simp_all only [zipWith_eq_nil_iff, not_false_eq_true, not_sym, false_or, or_true]
 
-lemma nil_zip_right {v: Type} {a: v}(h: List.zip b [a] = []) : b = [] :=by
+lemma nil_zip_right (h: List.zip b [a] = []) : b = [] :=by
   unfold List.zip  at h
   have := List.zipWith_eq_nil_iff.mp h
   simp_all only [zipWith_eq_nil_iff, not_false_eq_true, not_sym, or_false]
 
-lemma take_n {u: Type} {head : u} {tail: List u}:
+lemma take_n {α: Type} {head : α} {tail: List α}:
   List.take (succ n) (head :: tail) = head:: List.take n tail:=by
     unfold List.take; simp
     generalize ht : List.take n tail = te
     unfold List.take at ht;
     simp [ht]
 
-theorem zip_take_zip {u: Type} {v: Type} {a: List u} {b: List v}:
+theorem zip_take_zip {α: Type} {β: Type} {a: List α} {b: List β}:
   (List.zip a b).take n  = List.zip (a.take n) (b.take n) :=by
   generalize hl: (List.zip a b) = s
   induction s generalizing a b n
@@ -469,19 +469,17 @@ def option_not_eq (a: Option Char) (b: Char) : Bool := match a with
   | none => true
   | some s => s ≠ b
 
-lemma of_mem_unzip {u: Type} {v: Type} {m: u} {l: List (u × v)}
-  (h: m ∈ (List.unzip l).1) : ∃ n, (m,n) ∈ l := by
+lemma of_mem_unzip (g: m ∈ (List.unzip l).1) : ∃ n, (m,n) ∈ l := by
   induction l
-  simp only [unzip_nil, List.not_mem_nil] at h
+  simp only [unzip_nil, List.not_mem_nil] at g
   rename_i h t ind
-  simp at h; rename_i head;
-  cases h; use head.2; simp_all only [Prod.mk.eta, mem_cons, true_or]
+  simp at g;
+  cases g; use h.2; simp_all only [Prod.mk.eta, mem_cons, true_or]
   rename_i h; have ind:=ind h
   obtain ⟨n, hn⟩ := ind
   use n; simp_all only [forall_true_left, mem_cons, or_true]
 
-theorem unzip_zip_take_left {u: Type} {v: Type} {a: List u} {b: List v}
-  : (List.unzip (List.zip a b)).1 = a.take (min a.length b.length) := by
+theorem unzip_zip_take_left : (List.unzip (List.zip a b)).1 = a.take (min a.length b.length) := by
   generalize hl: (List.zip a b) = s
   induction s generalizing a b
   simp_all only [unzip_nil]
@@ -512,8 +510,7 @@ theorem unzip_zip_take_left {u: Type} {v: Type} {a: List u} {b: List v}
   apply ind; simp
 
 
-theorem unzip_zip_take_right {u: Type} {v: Type} {a: List u} {b: List v}
-  : (List.unzip (List.zip a b)).2 = b.take (min a.length b.length) := by
+theorem unzip_zip_take_right: (List.unzip (List.zip a b)).2 = b.take (min a.length b.length) := by
   generalize hl: (List.zip a b) = s
   induction s generalizing a b
   simp_all only [unzip_nil]

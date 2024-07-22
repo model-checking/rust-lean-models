@@ -15,7 +15,7 @@ This library is intended to be used for verifying Rust programs via Lean.
 The Lean implementation is based on the description of the Rust functions, which are published at https://doc.rust-lang.org/std.
 The library includes:
 - Definitions of functions equivalent to those from the Rust standard library
-- Proofs that these definitions are correct (i.e., match our understanding of the Rust original)
+- Proofs that these definitions are consistent with the description of the Rust functions
 - Supporting lemmas and theorems for proof construction
 
 ## Installation

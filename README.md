@@ -75,7 +75,7 @@ the Rust original (see below for more details).
 ### For functions that return Bool or can be defined based on other functions that have already been proven correct
    
 - First, we provide a variant Lean definition of the Rust function that we call the definitional 
-version (with name`func_name_def`).  This version is intended to match the documented description 
+version (with name `func_name_def`).  This version is intended to match the documented description 
 of the Rust function. Ideally, the definitional version should not contain recursion, except in some trivial cases, 
 but it can make use of the recursive versions of other functions that have been previously proven correct.
 

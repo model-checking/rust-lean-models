@@ -20,11 +20,23 @@ The library includes:
 
 ## Installation
 
-To use the library, add the following lines to your `lakefile.lean`:
+-  Add the following lines to your `lakefile.lean`:
 
-` require rust-lean-models from git "https://github.com/model-checking/rust-lean-models" `
+    ` require «rust-lean-models» from git "https://github.com/model-checking/rust-lean-models" `
 
-Then do `lake update` in the terminal.
+- Change the lean version in `lean-toolchain.lean`:
+    ` leanprover/lean4:v4.10.0-rc2 `
+
+- Run `lake update` in the terminal.
+
+- Import the packages and open the namespaces"
+
+    ```
+    import RustLeanModels.Basic
+    import RustLeanModels.RustString
+    open RustString
+    open Iterator
+    ```
 
 ## Usage
 ### Translating a Rust program 
@@ -117,7 +129,7 @@ then define the definitional version based on them.
     ```
     def split_inclusive_char_filter_def (s: Str) (f: Char → Bool):= split_at_charpos_list s (List.map (fun x => x+1) (list_char_filter_charpos s f))
     ```
-defined based on the
+
 ### When the Rust documentation describes properties of the return value 
 We state and prove a soundness theorem for the function with
 name: `func_name_sound` and type: `x = func_name input1 input2 ...  ↔ properties of x`.

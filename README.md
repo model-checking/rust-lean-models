@@ -94,7 +94,7 @@ In some cases, constructing a non-induction proof using the definitional version
 
     `theorem is_char_boundary_EQ : is_char_boundary s p =  is_char_boundary_def s p`.
 
-When Rust description cannot be efficiently expressed in Lean (require recursions, or very unintuitive),
+When the description of a Rust function cannot be efficiently expressed in Lean (requires recursions, or is unintuitive),
 we can:
 - Define the definitional version (similar to Case 1) based on a recursive trivial function, then prove the equivalence theorem.
 For example, the `byteSize_def` function is defined on the simple function `sum_list_Nat`

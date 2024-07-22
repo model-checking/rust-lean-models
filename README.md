@@ -121,7 +121,7 @@ defined based on the
 ### When the Rust documentation describes properties of the return value 
 We state and prove a soundness theorem for the function with
 name: `func_name_sound` and type: `x = func_name input1 input2 ...  ↔ properties of x`.
-For example, the soundness thorem for the function `floor_char_boundary` is 
+For example, the soundness theorem for the function `floor_char_boundary` is 
 
 ```
 theorem floor_char_boundary_sound:  flp = floor_char_boundary s p

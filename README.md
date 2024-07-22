@@ -10,7 +10,7 @@ Lean models of various Rust libraries to facilitate Lean-based verification of R
 
 ## Description
 The library defines equivalent Lean versions of functions from the Rust standard library.
-This library is intended to be used for verifying string-manipulating Rust programs via Lean.
+This library is intended to be used for verifying Rust programs via Lean.
 
 The Lean implementation is based on the description of the Rust functions, which are published at https://doc.rust-lang.org/std.
 The library includes:

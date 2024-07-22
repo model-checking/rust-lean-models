@@ -29,7 +29,7 @@ Then do `lake update` in the terminal.
 ## Usage
 ### Translating a Rust program 
 
-For any Rust built-in functions which are used in user code , map it with 
+For any Rust built-in functions which are used in user code, map it with 
 the corresponding function name in the library (see the Tables below).
 
 ### Proof Tutorial

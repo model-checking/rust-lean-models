@@ -29,7 +29,7 @@
 | std::iter::Iterator::fold |   List.foldl    | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.fold |
 | std::iter::Iterator::last |   List.getLast    | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.last |
 | std::iter::Iterator::map |   List.map    | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map |
-| std::iter::Iterator::nth |   List.get?   | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.fold |
+| std::iter::Iterator::nth |   List.get?   | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.nth |
 | std::iter::Iterator::position |   List.findSome?   | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.position |
 | std::iter::Iterator::rev |   List.reverse   | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.rev |
 | std::iter::Iterator::unzip |   List.unzip   | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.unzip |

@@ -164,6 +164,18 @@ lemma list_nat_zero_to_le : ∀ m ∈ (list_nat_zero_to n), m ≤ n :=by
   simp only [mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, add_le_add_iff_right]
   exact ind
 
+lemma list_nat_zero_to_aux_ge : x ∈ list_nat_zero_to_aux n i → x ≥ i :=by
+  induction n generalizing i
+  simp only [list_nat_zero_to_aux, not_mem_nil, ge_iff_le, false_implies]
+  simp only [list_nat_zero_to_aux, mem_cons, ge_iff_le]
+  intro g; cases g; omega; rename_i n ind g; have ind:=ind g; omega
+
+lemma list_nat_zero_to_aux_first_mem : list_nat_zero_to_aux n i = h::t → h = i :=by
+  cases n
+  simp only [list_nat_zero_to_aux, not_false_eq_true, not_sym, false_implies]
+  simp only [list_nat_zero_to_aux, cons.injEq, and_imp]
+  intro g _; omega
+
 --LIST
 
 lemma exist_last_mem : l.length > 0 → ∃ s c, l = s ++ [c] :=by

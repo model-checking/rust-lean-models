@@ -24,8 +24,7 @@ The library includes:
 
     ` require «rust-lean-models» from git "https://github.com/model-checking/rust-lean-models" `
 
-- Change the lean version in `lean-toolchain.lean`:
-    ` leanprover/lean4:v4.10.0-rc2 `
+- Change the lean version in `lean-toolchain.lean` to that of `"https://github.com/model-checking/rust-lean-models/lean-toolchain.lean"`
 
 - Run `lake update` in the terminal.
 

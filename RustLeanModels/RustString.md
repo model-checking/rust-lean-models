@@ -11,7 +11,7 @@ This assumes that overflow exceptions will not happen. Note that overflow except
 in Rust programs which use usize for String indexing when the Strings size are GBs.
 - Byte Lists (for UTF8 conversion) are represented as `List Nat` in Lean. Strings are converted from `List Char` to `List Nat` by the function `Str_toUTF8`. 
   This function ensures that the output is a valid UTF8 string. We use three axioms: `Char_Pos0`, `Char_Diff`, and `Char_Size` which describe
-  the properties of UTF8 encoding (see UTF8Str.lean).
+  the properties of UTF8 encoding (see `RustLeanModels\UTF8Str.lean`).
 - The trait std::str::pattern::Pattern is converted to the inductive type `Pattern` (see RustString.lean).
 
 
@@ -53,8 +53,8 @@ in Rust programs which use usize for String indexing when the Strings size are G
 | core::str::strip_suffix |   strip_suffix    | https://doc.rust-lang.org/std/primitive.str.html#method.strip_suffix |
 | core::str::to_ascii_lowercase |    to_ascii_lowercase    | https://doc.rust-lang.org/std/primitive.str.html#method.to_ascii_lowercase |
 | core::str::to_ascii_uppercase |   to_ascii_uppercase    | https://doc.rust-lang.org/std/primitive.str.html#method.to_ascii_uppercase |
-| core::str::to_lowercase |   not yet   | https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase |
-| core::str::to_uppercase |   not yet    | https://doc.rust-lang.org/std/primitive.str.html#method.to_uppercase |
+| core::str::to_lowercase |   N/A   | https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase |
+| core::str::to_uppercase |   N/A    | https://doc.rust-lang.org/std/primitive.str.html#method.to_uppercase |
 | core::str::trim |   trim    | https://doc.rust-lang.org/std/primitive.str.html#method.trim |
 | core::str::trim_ascii |   trim_ascii    | https://doc.rust-lang.org/std/primitive.str.html#method.trim_ascii |
 | core::str::trim_ascii_end |   trim_ascii_end   | https://doc.rust-lang.org/std/primitive.str.html#method.trim_ascii_end |

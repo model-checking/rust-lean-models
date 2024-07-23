@@ -76,5 +76,5 @@ in Rust programs which use usize for String indexing when the Strings size are G
 
 ## Limitations
 The RustString library does not include:
-- Functions that mutate their input (e.g., make_ascii_lowercase), but it includes the cloning version (e.g. to_ascii_lowercase).
+- Functions that mutate their input (e.g., `make_ascii_lowercase`), but it includes the cloning version (e.g. `to_ascii_lowercase`).
 - Functions which may panic (e.g., slice indexing), but it includes the non-panicking version (e.g. `str::get`)

@@ -63,7 +63,7 @@ In those cases, first, we implement an auxiliary function (name: `func_name_aux`
 recursively with the parameters, then we define the function `func_name` based on the auxiliary function 
 with initial values for the parameters. 
 For example, `char_indices` is defined based on `char_indices_aux` as 
-`def char_indices (s: Str):= char_indices_aux s 0`.
+`def char_indices (s: Str) := char_indices_aux s 0`.
 
 For Rust functions involving the `Pattern` type, we implement two recursive sub-functions 
 (name: `func_name_char_filter` and  `func_name_substring`) which replace the `Pattern` type 

@@ -7,7 +7,7 @@
 ## Data type conversion
 - String is converted to `List Char` in Lean. This helps constructing induction proofs.
 - The integer types that are used in String indexing are converted to `Nat` in the Lean implementation.
-This assumes that overflow exceptions will not happen. Note that overflow exeptions can only happen 
+This assumes that overflow exceptions will not happen. Note that overflow exceptions can only happen 
 in Rust programs which use usize for String indexing when the Strings size are GBs.
 - Byte Lists (for UTF8 conversion) are represented as `List Nat` in Lean. Strings are converted from `List Char` to `List Nat` by the function `Str_toUTF8`. 
   This function ensures that the output is a valid UTF8 string. We use three axioms: `Char_Pos0`, `Char_Diff`, and `Char_Size` which describe

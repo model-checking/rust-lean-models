@@ -55,7 +55,7 @@ More examples can be found in Proof_Example.lean
 For each Rust function, we provide a recursive Lean function. Implementing 
 the equivalent functions in Lean recursively enables user to construct 
 induction proofs conveniently. The Lean function has the same as the Rust original, 
-except when the Rust name  clashes with a Lean keyword. In case of a clash, a Rust function 'func_name' 
+except when the Rust name clashes with a Lean keyword. In case of a clash, a Rust function 'func_name' 
 is renamed to `rust_func_name` in Lean.
 
 Implementing a function recursively may requires some extra parameters.

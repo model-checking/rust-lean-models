@@ -16,7 +16,7 @@ Variable naming conventions:
 -Strings (Str): s, s1, s2, (h::t)
 -Substrings (Str): ss
 -Prefix (Str): p p1 p2
--Character: c
+-Character (Char): c
 -Pattern: P
 -Char filter (Char → Bool): f
 -Position, Index (Nat) : i j
@@ -30,10 +30,18 @@ Variable naming conventions:
 namespace RustString
 
 
-def rust_isWhitespace (c : Char) := (isWhitespace c) || (c = '\x0C')
+--There are 5 ascii whitespace characters in Rust function is_ascii_whitespace
+--but only 4 in Lean function isWhitespace
+def is_ascii_whitespace (c : Char) := (isWhitespace c) || (c = '\x0C')
 
 
-def is_Unicode_Whitespace (c : Char): Bool :=
+/-
+Function: is_whitespace
+From: core::char::is_whitespace
+Description: https://doc.rust-lang.org/std/primitive.char.html#method.is_whitespace
+-/
+
+def is_whitespace (c : Char): Bool :=
   c.val ∈ [9, 10, 11, 12, 13, 32, 133, 160, 5760,
           8192, 8193, 8194, 8195, 8196, 8197, 8198, 8199, 8200, 8201, 8202,
           8232, 8233, 8239, 8287, 12288]
@@ -70,7 +78,7 @@ def byteSize (s : List Char) : Nat := match s with
   | [] => 0
   | h::t => Char.utf8Size h + byteSize t
 
-@[simp]
+
 def byteSize_def (s : List Char) : Nat := sum_list_Nat (List.map (fun x: Char => Char.utf8Size x) s)
 
 
@@ -3611,13 +3619,13 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.split_ascii
 
 def split_ascii_whitespace_aux (s: Str) (w: Str) (prespace: Bool): List Str := match s with
   | [] => if prespace = false then [w] else []
-  | h::t => if rust_isWhitespace h then
+  | h::t => if is_ascii_whitespace h then
           if prespace = false then w::split_ascii_whitespace_aux t [] true else split_ascii_whitespace_aux t []  true
           else split_ascii_whitespace_aux t (w++[h]) false
 
 def split_ascii_whitespace (s: Str) := split_ascii_whitespace_aux s [] true
 
-def split_ascii_whitespace_def (s: Str) := filter (fun a: Str => a.length > 0) (split_char_filter s rust_isWhitespace)
+def split_ascii_whitespace_def (s: Str) := filter (fun a: Str => a.length > 0) (split_char_filter s is_ascii_whitespace)
 
 --#eval split_ascii_whitespace "   abc  fsdf  f  ".data
 --#eval split_ascii_whitespace "   ".data
@@ -3642,11 +3650,11 @@ lemma split_ascii_whitespace_aux_false_ne_nil  : split_ascii_whitespace_aux s w 
   simp only [split_ascii_whitespace_aux, ↓reduceIte, ne_eq]
   split; simp only [not_false_eq_true]; exact ind
 
-lemma split_ascii_whitespace_aux_para2_elim_case1: (¬ rust_isWhitespace a) → split_ascii_whitespace_aux (a::s) w false = split_ascii_whitespace_aux (a::s) w true := by
+lemma split_ascii_whitespace_aux_para2_elim_case1: (¬ is_ascii_whitespace a) → split_ascii_whitespace_aux (a::s) w false = split_ascii_whitespace_aux (a::s) w true := by
   intro g; unfold split_ascii_whitespace_aux
   simp only [g, not_false_eq_true, not_sym, ↓reduceIte]
 
-lemma split_ascii_whitespace_aux_para2_elim_case2: (rust_isWhitespace a) → split_ascii_whitespace_aux (a::s) w false = w::split_ascii_whitespace_aux (a::s) w true := by
+lemma split_ascii_whitespace_aux_para2_elim_case2: (is_ascii_whitespace a) → split_ascii_whitespace_aux (a::s) w false = w::split_ascii_whitespace_aux (a::s) w true := by
   intro g; unfold split_ascii_whitespace_aux
   simp only [g, not_false_eq_true, not_sym, ↓reduceIte]
 
@@ -3667,7 +3675,7 @@ theorem split_ascii_whitespace_EQ: split_ascii_whitespace s = split_ascii_whites
     filter_nil]
   unfold filter; simp only [length_nil, lt_self_iff_false, decide_False, filter_nil]
   rename_i h t ind
-  by_cases (rust_isWhitespace h) ; rename_i gc;
+  by_cases (is_ascii_whitespace h) ; rename_i gc;
   have e1: split_ascii_whitespace (h :: t) =  split_ascii_whitespace t:= by
     simp only [split_ascii_whitespace, split_ascii_whitespace_aux, gc, ↓reduceIte, not_false_eq_true, not_sym]
   unfold split_ascii_whitespace_def split_char_filter split_char_filter_aux
@@ -3677,7 +3685,7 @@ theorem split_ascii_whitespace_EQ: split_ascii_whitespace s = split_ascii_whites
   rw[← split_char_filter, ← split_ascii_whitespace_def, e1, ind]
   rename_i gc; unfold split_ascii_whitespace_def split_char_filter split_char_filter_aux
   simp only [gt_iff_lt, gc, not_false_eq_true, not_sym, ↓reduceIte, List.nil_append]
-  generalize gsp1: split_char_filter_aux t rust_isWhitespace [] = sp1
+  generalize gsp1: split_char_filter_aux t is_ascii_whitespace [] = sp1
   cases sp1; simp only [split_char_filter_aux_ne_nil, not_false_eq_true, not_sym] at gsp1
   rename_i hsp1 tsp1; have gsp11:= @split_char_filter_aux_para1_append _ _ _ _ _ [h] gsp1
   simp only [singleton_append] at gsp11; rw[gsp11]
@@ -3693,7 +3701,7 @@ theorem split_ascii_whitespace_EQ: split_ascii_whitespace s = split_ascii_whites
   cases t; simp [split_char_filter_aux] at gsp1; simp only [split_ascii_whitespace_aux, ↓reduceIte, cons.injEq] at gsp2
   rw[← gsp1.left, ← gsp1.right, ← gsp2.right, ← gsp2.left]; simp only [filter_nil]
   rename_i ht tt
-  by_cases (rust_isWhitespace ht); rename_i gc; rw[split_ascii_whitespace_aux_para2_elim_case2 gc] at gsp2
+  by_cases (is_ascii_whitespace ht); rename_i gc; rw[split_ascii_whitespace_aux_para2_elim_case2 gc] at gsp2
   simp only [cons.injEq, true_and] at gsp2; rw[gsp2.right] at ind; rw[← gsp2.left, ind]
   simp only [split_char_filter_aux, gc, ↓reduceIte, cons.injEq] at gsp1; rw[← gsp1.left]
   simp only [gt_iff_lt, decide_False, not_false_eq_true, not_sym, filter_cons_of_neg]
@@ -3735,7 +3743,7 @@ lemma sub_split_ascii_whitespace_flatten2  (g: m ∈ split_ascii_whitespace_aux 
     forall_true_left] at ind; exact ind
 
 
-lemma sub_split_ascii_whitespace_flatten: ((flatten (split_ascii_whitespace_aux s [] b) = List.filter (fun a => ! rust_isWhitespace a) s))
+lemma sub_split_ascii_whitespace_flatten: ((flatten (split_ascii_whitespace_aux s [] b) = List.filter (fun a => ! is_ascii_whitespace a) s))
                                   ∧ (∀ x ∈ split_ascii_whitespace s, x ≠ []):=by
   unfold flatten
   induction s generalizing b
@@ -3756,7 +3764,7 @@ lemma sub_split_ascii_whitespace_flatten: ((flatten (split_ascii_whitespace_aux 
   simp only [not_false_eq_true, not_sym, ne_eq, or_true, forall_true_left] at gx
   exact gx
 
-lemma split_ascii_whitespace_flatten: flatten (split_ascii_whitespace s) = List.filter (fun a => ! rust_isWhitespace a) s := by
+lemma split_ascii_whitespace_flatten: flatten (split_ascii_whitespace s) = List.filter (fun a => ! is_ascii_whitespace a) s := by
   unfold split_ascii_whitespace; simp only [sub_split_ascii_whitespace_flatten]
 
 lemma split_ascii_whitespace_not_contail_nil:  ∀ x ∈ split_ascii_whitespace s, x ≠ [] := by
@@ -3773,13 +3781,13 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.split_white
 
 def split_whitespace_aux (s: Str) (w: Str) (prespace: Bool): List Str := match s with
   | [] => if prespace = false then [w] else []
-  | h::t => if is_Unicode_Whitespace h then
+  | h::t => if is_whitespace h then
           if prespace = false then w::split_whitespace_aux t [] true else split_whitespace_aux t []  true
           else split_whitespace_aux t (w++[h]) false
 
 def split_whitespace (s: Str) := split_whitespace_aux s [] true
 
-def split_whitespace_def (s: Str) := filter (fun sa: Str => sa.length > 0) (split_char_filter s is_Unicode_Whitespace)
+def split_whitespace_def (s: Str) := filter (fun sa: Str => sa.length > 0) (split_char_filter s is_whitespace)
 
 --#eval split_whitespace "   abc  fsdf  f  ".data
 --#eval split_whitespace "   ".data
@@ -3804,11 +3812,11 @@ lemma split_whitespace_aux_false_ne_nil  : split_whitespace_aux s w false ≠ []
   simp only [split_whitespace_aux, ↓reduceIte, ne_eq]
   split; simp only [not_false_eq_true]; exact ind
 
-lemma split_whitespace_aux_para2_elim_case1: (¬ is_Unicode_Whitespace a) → split_whitespace_aux (a::s) w false = split_whitespace_aux (a::s) w true := by
+lemma split_whitespace_aux_para2_elim_case1: (¬ is_whitespace a) → split_whitespace_aux (a::s) w false = split_whitespace_aux (a::s) w true := by
   intro g; unfold split_whitespace_aux
   simp only [g, not_false_eq_true, not_sym, ↓reduceIte]
 
-lemma split_whitespace_aux_para2_elim_case2: (is_Unicode_Whitespace a) → split_whitespace_aux (a::s) w false = w::split_whitespace_aux (a::s) w true := by
+lemma split_whitespace_aux_para2_elim_case2: (is_whitespace a) → split_whitespace_aux (a::s) w false = w::split_whitespace_aux (a::s) w true := by
   intro g; unfold split_whitespace_aux
   simp only [g, not_false_eq_true, not_sym, ↓reduceIte]
 
@@ -3819,7 +3827,7 @@ theorem split_whitespace_EQ: split_whitespace s = split_whitespace_def s := by
     filter_nil]
   unfold filter; simp only [length_nil, lt_self_iff_false, decide_False, filter_nil]
   rename_i h t ind
-  by_cases (is_Unicode_Whitespace h) ; rename_i gc;
+  by_cases (is_whitespace h) ; rename_i gc;
   have e1: split_whitespace (h :: t) =  split_whitespace t:= by
     simp only [split_whitespace, split_whitespace_aux, gc, ↓reduceIte, not_false_eq_true, not_sym]
   unfold split_whitespace_def split_char_filter split_char_filter_aux
@@ -3829,7 +3837,7 @@ theorem split_whitespace_EQ: split_whitespace s = split_whitespace_def s := by
   rw[← split_char_filter, ← split_whitespace_def, e1, ind]
   rename_i gc; unfold split_whitespace_def split_char_filter split_char_filter_aux
   simp only [gt_iff_lt, gc, not_false_eq_true, not_sym, ↓reduceIte, List.nil_append]
-  generalize gsp1: split_char_filter_aux t is_Unicode_Whitespace [] = sp1
+  generalize gsp1: split_char_filter_aux t is_whitespace [] = sp1
   cases sp1; simp only [split_char_filter_aux_ne_nil, not_false_eq_true, not_sym] at gsp1
   rename_i hsp1 tsp1; have gsp11:= @split_char_filter_aux_para1_append _ _ _ _ _ [h] gsp1
   simp only [singleton_append] at gsp11; rw[gsp11]
@@ -3845,7 +3853,7 @@ theorem split_whitespace_EQ: split_whitespace s = split_whitespace_def s := by
   cases t; simp [split_char_filter_aux] at gsp1; simp only [split_whitespace_aux, ↓reduceIte, cons.injEq] at gsp2
   rw[← gsp1.left, ← gsp1.right, ← gsp2.right, ← gsp2.left]; simp only [filter_nil]
   rename_i ht tt
-  by_cases (is_Unicode_Whitespace ht); rename_i gc; rw[split_whitespace_aux_para2_elim_case2 gc] at gsp2
+  by_cases (is_whitespace ht); rename_i gc; rw[split_whitespace_aux_para2_elim_case2 gc] at gsp2
   simp only [cons.injEq, true_and] at gsp2; rw[gsp2.right] at ind; rw[← gsp2.left, ind]
   simp only [split_char_filter_aux, gc, ↓reduceIte, cons.injEq] at gsp1; rw[← gsp1.left]
   simp only [gt_iff_lt, decide_False, not_false_eq_true, not_sym, filter_cons_of_neg]
@@ -3887,7 +3895,7 @@ lemma sub_split_whitespace_flatten2  (g: m ∈ split_whitespace_aux s w b ) (gc:
     forall_true_left] at ind; exact ind
 
 
-lemma sub_split_whitespace_flatten: ((flatten (split_whitespace_aux s [] b) = List.filter (fun c => ! is_Unicode_Whitespace c) s))
+lemma sub_split_whitespace_flatten: ((flatten (split_whitespace_aux s [] b) = List.filter (fun c => ! is_whitespace c) s))
                                   ∧ (∀ x ∈ split_whitespace s, x ≠ []):=by
   unfold flatten
   induction s generalizing b
@@ -3908,7 +3916,7 @@ lemma sub_split_whitespace_flatten: ((flatten (split_whitespace_aux s [] b) = Li
   simp only [not_false_eq_true, not_sym, ne_eq, or_true, forall_true_left] at gx
   exact gx
 
-lemma split_whitespace_flatten: flatten (split_whitespace s) = List.filter (fun c => ! is_Unicode_Whitespace c) s := by
+lemma split_whitespace_flatten: flatten (split_whitespace s) = List.filter (fun c => ! is_whitespace c) s := by
   unfold split_whitespace; simp only [sub_split_whitespace_flatten]
 
 lemma split_whitespace_not_contail_nil:  ∀ x ∈ split_whitespace s, x ≠ [] := by
@@ -4515,7 +4523,7 @@ From: str::core::trim_ascii_start
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.trim_ascii_start
 -/
 
-def trim_ascii_start (s: Str) := trim_start_matches_char_filter s rust_isWhitespace
+def trim_ascii_start (s: Str) := trim_start_matches_char_filter s is_ascii_whitespace
 
 /-
 Function: trim_ascii_end
@@ -4523,7 +4531,7 @@ From: str::core::trim_ascii_end
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.trim_ascii_end
 -/
 
-def trim_ascii_end (s: Str) := trim_end_matches_char_filter s rust_isWhitespace
+def trim_ascii_end (s: Str) := trim_end_matches_char_filter s is_ascii_whitespace
 
 
 /-
@@ -4541,7 +4549,7 @@ From: str::core::trim_ascii_start
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.trim_ascii_start
 -/
 
-def trim_start (s: Str) := trim_start_matches_char_filter s is_Unicode_Whitespace
+def trim_start (s: Str) := trim_start_matches_char_filter s is_whitespace
 
 /-
 Function: trim_ascii_end
@@ -4549,7 +4557,7 @@ From: str::core::trim_ascii_end
 Description: https://doc.rust-lang.org/std/primitive.str.html#method.trim_ascii_end
 -/
 
-def trim_end (s: Str) := trim_end_matches_char_filter s is_Unicode_Whitespace
+def trim_end (s: Str) := trim_end_matches_char_filter s is_whitespace
 
 
 /-
@@ -4638,7 +4646,7 @@ theorem replace_char_filter_EQ
   rw[sub_replace_char_filter_EQ,← split_char_filter, ind]
 
 
---#eval replace_char_filter "this is old".data Char.rust_isWhitespace "XX".data
+--#eval replace_char_filter "this is old".data Char.is_ascii_whitespace "XX".data
 
 def replace (s: Str) (i: Pattern) (sr: Str):= match i with
   | Pattern.SingleChar c => replace_char_filter s (fun x => x = c) sr

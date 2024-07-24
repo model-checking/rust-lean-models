@@ -119,14 +119,14 @@ that computes the sum of a list of natural numbers:
 - Define and prove the correctness of one/some subordinate function(s), 
 then define the definitional version based on them. 
     For example, to define `split_inclusive_char_filter_def`, firstly we define and prove the coreectness of two functions:
-    - `list_char_filter_charpos (s: Str) (f: Char → Bool)`: returns the list of positions of characters in `s` satisfying the filter `f`
+    - `list_char_filter_charIndex (s: Str) (f: Char → Bool)`: returns the list of positions of characters in `s` satisfying the filter `f`
 
-    - `split_at_charpos_list (s: Str) (l: List Nat)`: split the strings `s` at positions in `l`
+    - `split_at_charIndex_list (s: Str) (l: List Nat)`: split the strings `s` at positions in `l`
 
     then define `split_inclusive_char_filter_def` based on them:
 
     ```
-    def split_inclusive_char_filter_def (s: Str) (f: Char → Bool):= split_at_charpos_list s (List.map (fun x => x+1) (list_char_filter_charpos s f))
+    def split_inclusive_char_filter_def (s: Str) (f: Char → Bool):= split_at_charIndex_list s (List.map (fun x => x+1) (list_char_filter_charIndex s f))
     ```
 
 ### When the Rust documentation describes properties of the return value 

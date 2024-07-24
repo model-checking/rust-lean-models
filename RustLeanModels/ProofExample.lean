@@ -12,21 +12,21 @@ set_option maxHeartbeats 10000000
 
 /-Sometimes adding an extra variable makes to proof easier-/
 
-lemma substring_charpos_map : substring_charpos s ss = some i →
-        ∃ j, substring_charpos (List.map f (v ++ s)) (List.map f ss) = some j ∧ j ≤ i + v.length := by
+lemma substring_charIndex_map : substring_charIndex s ss = some i →
+        ∃ j, substring_charIndex (List.map f (v ++ s)) (List.map f ss) = some j ∧ j ≤ i + v.length := by
   intro g
-  have g:= substring_charpos_some_sound.mp g
-  unfold is_first_substringcharpos at g
+  have g:= substring_charIndex_some_sound.mp g
+  unfold is_first_substringcharIndex at g
   have g:= g.left
-  have gi : is_substringcharpos (List.map f (v ++ s)) (List.map f ss) (i + v.length)  := by
-    unfold is_substringcharpos at * ; obtain ⟨s0, s2, g⟩:= g
+  have gi : is_substringcharIndex (List.map f (v ++ s)) (List.map f ss) (i + v.length)  := by
+    unfold is_substringcharIndex at * ; obtain ⟨s0, s2, g⟩:= g
     use List.map f (v++s0), List.map f s2;
     simp only [g, List.append_assoc, map_append, length_append, length_map, true_and]; omega
-  have gj := exists_first_substring_charpos (by use (i + v.length))
+  have gj := exists_first_substring_charIndex (by use (i + v.length))
   obtain ⟨j, gj⟩ := gj; use j
   constructor
-  . exact substring_charpos_some_sound.mpr gj
-  . unfold is_first_substringcharpos at gj
+  . exact substring_charIndex_some_sound.mpr gj
+  . unfold is_first_substringcharIndex at gj
     exact gj.right (i + v.length) gi
 
 
@@ -40,7 +40,7 @@ lemma sub_split_map (gss: ss.length > 0):
   rw[gs]; unfold split_substring; simp only [gt_iff_lt, gss, ↓reduceDIte, take_nil, drop_nil,
     map_nil, length_nil, lt_self_iff_false, singleton_append, length_cons, List.length_singleton,
     reduceSucc, ge_iff_le]
-  have i:= @substring_charpos_of_nil ss gss; rw[i]
+  have i:= @substring_charIndex_of_nil ss gss; rw[i]
   simp only [List.length_singleton, length_map, gss, ↓reduceDIte, ge_iff_le]
   split ; simp only [List.append_nil, List.length_singleton, le_refl];
   simp only [List.append_nil,length_cons]; omega
@@ -48,7 +48,7 @@ lemma sub_split_map (gss: ss.length > 0):
   split; split; simp only [List.length_singleton, le_refl]
   simp only [List.length_singleton, length_cons]; simp only [length_nil, reduceSucc]; omega
   rename_i i gi
-  have gj:= @substring_charpos_map _ _ _ f v gi; obtain ⟨j,gj⟩ := gj; rw[gj.left]
+  have gj:= @substring_charIndex_map _ _ _ f v gi; obtain ⟨j,gj⟩ := gj; rw[gj.left]
   simp only [length_cons, ge_iff_le];
   generalize gm: (List.drop (i + ss.length) s).length = m
   have id1: m < n :=by rw[← gm, ← gl]; simp only [length_drop]; omega

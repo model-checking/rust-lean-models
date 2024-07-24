@@ -296,10 +296,8 @@ lemma byteSize_gt_ListCharPos_aux: ∀ x ∈ (ListCharPos_aux s k), byteSize_aux
   simp only [this, succ.injEq] at hl
   simp_all only [gt_iff_lt, length_cons];
 
-
 lemma byteSize_gt_ListCharPos: ∀ x ∈ (ListCharPos s), byteSize s > x :=by
   unfold ListCharPos; rw[byteSize_aux_para1_elim]; apply byteSize_gt_ListCharPos_aux
-
 
 lemma byteSize_aux_mem_CharBoundPos_aux : (byteSize_aux s k) ∈ (CharBoundPos_aux s k) := by
   induction s generalizing k ;
@@ -309,7 +307,6 @@ lemma byteSize_aux_mem_CharBoundPos_aux : (byteSize_aux s k) ∈ (CharBoundPos_a
   have : (byteSize_aux tail (k + Char.utf8Size head)) ∈  (CharBoundPos_aux tail (k + Char.utf8Size head)) := by
     apply ind
   simp_all only [elem_eq_mem, decide_eq_true_eq, decide_True, mem_cons, or_true]
-
 
 lemma byteSize_in_CharBoundPos :  (byteSize s) ∈  (CharBoundPos s) := by
   unfold CharBoundPos; rw[byteSize_aux_para1_elim]

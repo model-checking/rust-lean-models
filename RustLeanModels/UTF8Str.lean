@@ -49,6 +49,7 @@ def Char_toUTF8_aux (c : Char) (i : Nat) : List Nat := match i with
 
 def Char_toUTF8 (c : Char) := Char_toUTF8_aux c (utf8Size c)
 
+/- Convert a string s into it UTF8 encoding-/
 def Str_toUTF8 (s: Str) : List Nat := match s with
   | [] => []
   | h::t => (Char_toUTF8_aux h (utf8Size h)) ++  Str_toUTF8 t

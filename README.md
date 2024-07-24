@@ -28,7 +28,7 @@ The library includes:
 
 - Run `lake update` in the terminal.
 
-- Import the packages and open the namespaces"
+- Import the packages and open the namespaces in your Lean files (see `RustLeanModels\ProofTutorial.lean`)
 
     ```
     import RustLeanModels.Basic
@@ -44,8 +44,10 @@ For any Rust built-in functions which are used in user code, map it with
 the corresponding function name in the library (see the Tables below).
 
 ### Proof Tutorial
-We demonstrate some proof techniques in Proof_Tutorial.lean through two simple programs that compute
-the longest common prefix and longest common substring of the two input strings. 
+We demonstrate the applications of the library and some proof techniques 
+for String programs in `RustLeanModels\ProofTutorial.lean` 
+through two simple programs that compute the longest common prefix 
+and longest common substring of the two input strings. 
 More examples can be found in Proof_Example.lean
 
 ## Implementation

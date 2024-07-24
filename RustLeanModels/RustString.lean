@@ -296,11 +296,6 @@ lemma byteSize_gt_ListCharPos_aux: ∀ x ∈ (ListCharPos_aux s k), byteSize_aux
 lemma byteSize_gt_ListCharPos: ∀ x ∈ (ListCharPos s), byteSize s > x :=by
   unfold ListCharPos; rw[byteSize_aux_para1_elim]; apply byteSize_gt_ListCharPos_aux
 
-lemma not_in_forall_not_eq {s: List Nat} (h: ∀ x ∈ s, a ≠ x) : a ∉ s :=by
-  induction s; simp; rename_i head tail ind
-  simp_all only [ne_eq, mem_cons, or_true, not_false_eq_true, implies_true, forall_const,
-    forall_true_left, forall_eq_or_imp, not_sym, or_self]
-
 
 lemma byteSize_aux_mem_CharBoundPos_aux : (byteSize_aux s k) ∈ (CharBoundPos_aux s k) := by
   induction s generalizing k ;
@@ -416,7 +411,7 @@ Description: https://doc.rust-lang.org/std/primitive.str.html#method.is_char_bou
 
 @[simp]
 def is_char_boundary (s: Str) (i: Nat) := match s with
-  | [] => if i = 0 then true else false
+  | [] => i == 0
   | h::t => if i = 0 then true else
       if i < Char.utf8Size h then false else is_char_boundary t (i - Char.utf8Size h)
 
@@ -425,7 +420,7 @@ def is_char_boundary_def (s: Str) (i: Nat) := i ∈ ListCharPos s ∨  i = byteS
 theorem is_char_boundary_EQ : is_char_boundary s i =  is_char_boundary_def s i := by
   induction s generalizing i
   unfold is_char_boundary is_char_boundary_def ListCharPos ListCharPos_aux byteSize
-  simp only [Bool.if_false_right, Bool.and_true, decide_eq_true_eq, not_mem_nil, false_or]
+  simp only [beq_iff_eq, not_mem_nil, false_or]
   rename_i h t ind
   unfold is_char_boundary is_char_boundary_def
   have : ∀ m l, m ∈ ListCharPos l ∨ m = byteSize l ↔ m ∈ (ListCharPos l ++ [byteSize l]) :=by
@@ -448,7 +443,7 @@ theorem is_char_boundary_EQ : is_char_boundary s i =  is_char_boundary_def s i :
 lemma byteSize_prefix_is_char_boundary: List.IsPrefix p s  →  is_char_boundary s (byteSize p) := by
   induction s generalizing p
   simp only [prefix_nil, is_char_boundary, if_false_right, and_true]
-  intro g; rw[g]; simp only [byteSize, ↓reduceIte]
+  intro g; rw[g]; simp only [byteSize, beq_self_eq_true]
   rename_i h t ind ;
   intro g; unfold is_char_boundary
   cases p ; simp only [byteSize, ↓reduceIte]
@@ -458,7 +453,7 @@ lemma byteSize_prefix_is_char_boundary: List.IsPrefix p s  →  is_char_boundary
 
 
 lemma is_char_boundary_zero : is_char_boundary s 0 :=by
-  unfold is_char_boundary; simp only [↓reduceIte]
+  unfold is_char_boundary; simp only [beq_self_eq_true, ↓reduceIte]
   split; simp only; simp only
 
 
@@ -623,10 +618,10 @@ lemma split_at_zero: split_at s 0 = some ([], s) := by
   unfold split_at split_at_aux; simp only [↓reduceIte]
   split; simp only; simp only
 
-lemma split_at_is_char_boundary_none: ¬ is_char_boundary s i ↔  split_at s i = none :=by
+lemma split_at_none_of_not_char_boundary: ¬ is_char_boundary s i ↔  split_at s i = none :=by
   induction s generalizing i
   unfold is_char_boundary split_at split_at_aux
-  simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not, ite_eq_right_iff, imp_self]
+  simp only [beq_iff_eq, ite_eq_right_iff, not_false_eq_true, not_sym, imp_false]
   rename_i h t ind
   unfold is_char_boundary split_at split_at_aux
   constructor
@@ -652,7 +647,7 @@ lemma split_at_is_char_boundary_none: ¬ is_char_boundary s i ↔  split_at s i 
 /-
 Function: string_slice
 From: core::str::get
-Description: https://doc.rust-lang.org/std/primitive.str.html#method.floor_char_boundary
+Description: https://doc.rust-lang.org/std/primitive.str.html#method.get
 -/
 
 def string_slice (s: Str) (p1 p2: Nat):= if p2 < p1 then none else do let (_,s2) ← split_at s p1
@@ -666,7 +661,7 @@ def string_slice (s: Str) (p1 p2: Nat):= if p2 < p1 then none else do let (_,s2)
 For special cases: get(0..a)
 Function: PrefixFromPos
 From: core::str::get
-Description: https://doc.rust-lang.org/std/primitive.str.html#method.floor_char_boundary
+Description: https://doc.rust-lang.org/std/primitive.str.html#method.get
 -/
 
 def PrefixFromPos_safe_r (s: Str) (i: Nat): Str := match s with
@@ -683,7 +678,7 @@ lemma PrefixFromPos_verified: PrefixFromPos s i = some p ↔ (List.IsPrefix p s)
   split; simp only [Option.some.injEq, byteSize]
   induction s generalizing i p
   rename_i h;
-  simp only [is_char_boundary, ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not] at h;
+  simp only [is_char_boundary, beq_iff_eq] at h;
   rw[h]; unfold PrefixFromPos_safe_r;
   constructor
   intro h0; rw[← h0]; simp only [self_prefix, byteSize, and_self]
@@ -748,13 +743,13 @@ lemma PrefixFromPos_prefix (hp: List.IsPrefix i s) : PrefixFromPos s (byteSize i
 lemma PrefixFromPos_eq_split_at_none: PrefixFromPos s i = none ↔  split_at s i = none :=by
   simp only [PrefixFromPos, ite_eq_right_iff, not_false_eq_true, not_sym, imp_false,
     Bool.not_eq_true]
-  rw [← split_at_is_char_boundary_none]; simp only [Bool.not_eq_true]
+  rw [← split_at_none_of_not_char_boundary]; simp only [Bool.not_eq_true]
 
 lemma PrefixFromPos_eq_split_at_aux_some: PrefixFromPos s i = some u ↔ ∃ v, split_at s i= some (u,v) :=by
   induction s generalizing i  u
   unfold PrefixFromPos split_at split_at_aux is_char_boundary
-  simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not, ite_some_none_eq_some,
-    Prod.mk.injEq, exists_and_left, exists_eq', and_true, and_congr_right_iff]
+  simp only [beq_iff_eq, ite_some_none_eq_some, Prod.mk.injEq, exists_and_left, exists_eq',
+    and_true, and_congr_right_iff]
   intro g; rw[g,PrefixFromPos_safe_r]
   rename_i h t ind
   unfold PrefixFromPos split_at split_at_aux is_char_boundary
@@ -779,7 +774,7 @@ lemma PrefixFromPos_eq_split_at_aux_some: PrefixFromPos s i = some u ↔ ∃ v, 
   simp only [singleton_append, cons.injEq] at gv; rw[← gv.left.right] at gv
   have ind:=ind.mpr (by use v; exact gv.right)
   simp only [gv.left.left, ind, and_self]
-  rename_i g; have g:= split_at_is_char_boundary_none.mp g
+  rename_i g; have g:= split_at_none_of_not_char_boundary.mp g
   have g: split_at_aux t (i - Char.utf8Size h) [h] = none := by apply split_at_aux_none.mpr g
   simp only [List.nil_append, g, not_false_eq_true, not_sym, exists_const]
 
@@ -830,11 +825,12 @@ theorem floor_char_boundary_sound:  fcb = floor_char_boundary s i
   induction s generalizing i fcb
   unfold floor_char_boundary floor_char_boundary_aux is_char_boundary at *
   constructor; intro g; rw[g];
-  simp only [↓reduceIte, _root_.zero_le, ite_eq_left_iff, not_false_eq_true, not_sym, imp_false,
-    not_not, nonpos_iff_eq_zero, and_imp, forall_eq, forall_true_left, and_self]
+  simp only [beq_self_eq_true, _root_.zero_le, beq_iff_eq, nonpos_iff_eq_zero, and_imp, forall_eq,
+    imp_self, and_self]
   simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not, and_imp, forall_eq,
     _root_.zero_le, forall_true_left, and_true]
-  intro g; simp only [g, _root_.zero_le, forall_true_left]
+  intro g; simp only [beq_iff_eq] at g;  simp only [g, _root_.zero_le, beq_iff_eq,
+    nonpos_iff_eq_zero, forall_eq, imp_self]
   rename_i h t ind
   unfold is_char_boundary floor_char_boundary floor_char_boundary_aux
   constructor; intro g
@@ -856,6 +852,7 @@ theorem floor_char_boundary_sound:  fcb = floor_char_boundary s i
   by_cases (p0=0); linarith; rename_i v1;
   have gi0:= gi0 v1; have indr:= indr (p0 - Char.utf8Size h);
   simp only [gi0, tsub_le_iff_right, true_and] at indr; omega
+  --mpr
   split; rename_i gf; rw[gf];
   simp only [_root_.zero_le, ite_eq_left_iff, Bool.ite_eq_true_distrib,not_false_eq_true,
       not_sym, if_false_left, not_lt, nonpos_iff_eq_zero, and_imp, true_and, zero_add]
@@ -941,10 +938,10 @@ theorem ceiling_char_boundary_sound (gis: i ≤ byteSize s): ccb = ceiling_char_
   simp only [byteSize, byteSize_aux, nonpos_iff_eq_zero] at gis; rw[gis]
   unfold ceiling_char_boundary ceiling_char_boundary_aux is_char_boundary
   constructor; intro g; rw[g]
-  simp only [↓reduceIte, ge_iff_le, nonpos_iff_eq_zero, ite_eq_left_iff, not_false_eq_true, not_sym,
-    imp_false, not_not, _root_.zero_le, and_imp, implies_true, forall_const, and_true, true_and]
-  simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not, ge_iff_le,
-    _root_.zero_le, and_true, forall_eq, nonpos_iff_eq_zero, true_and, and_self, imp_self]
+  simp only [beq_self_eq_true, ge_iff_le, le_refl, beq_iff_eq, _root_.zero_le, and_true,
+    implies_true, and_self]
+  simp only [beq_iff_eq, ge_iff_le, _root_.zero_le, and_true, forall_eq, nonpos_iff_eq_zero,
+    true_and, and_self, imp_self]
   rename_i h t ind
   unfold ceiling_char_boundary ceiling_char_boundary_aux is_char_boundary
   constructor; intro g
@@ -980,6 +977,7 @@ theorem ceiling_char_boundary_sound (gis: i ≤ byteSize s): ccb = ceiling_char_
   have gi0:= gi0 v1; have indr:= indr (p0 - Char.utf8Size h);
   simp only [gi0, tsub_le_iff_right, true_and] at indr
   omega
+  --mpr
   have gch: Char.utf8Size h > 0 :=by apply  Char.utf8Size_pos
   simp only [ite_eq_left_iff, Bool.ite_eq_true_distrib, not_false_eq_true, not_sym, if_false_left,
     not_lt, ge_iff_le, and_imp, zero_add]

@@ -34,6 +34,18 @@ lemma imp_eq_not_or: (p → q) ↔  (¬ p ∨ q) :=by
 
 def unique {α : Type} (p: α → Prop) : Prop := ∀ x1 x2, p x1 → p x2 → x1 = x2
 
+lemma unique_minima {p: Nat → Prop}: unique (fun x => p x ∧ (∀ y, p y → y ≥ x)) :=by
+  unfold unique; intro x y g1 g2
+  have := g1.right y g2.left
+  have := g2.right x g1.left
+  omega
+
+lemma unique_maxima {p: Nat → Prop}: unique (fun x => p x ∧ (∀ y, p y → y ≤ x)) :=by
+  unfold unique; intro x y g1 g2
+  have := g1.right y g2.left
+  have := g2.right x g1.left
+  omega
+
 theorem mpr_of_unique : (∀ y, (x = y) → p y) → unique p → (∀ y, ((x = y) ↔  p y)) := by
   intro g1 g2 y; constructor; exact g1 y; intro g3
   have g1:= g1 x; simp only [true_implies] at g1
@@ -46,6 +58,11 @@ lemma exists_EQ {α: Type} {p q : α → Prop}: (∀ x, p x  ↔ q x) → ((∃ 
   intro g; constructor
   intro gy ; obtain ⟨y,gy⟩ := gy ; rw[g y] at gy ; use y
   intro gy ; obtain ⟨y,gy⟩ := gy ; rw[← g y] at gy ; use y
+
+lemma not_in_forall_not_eq {s: List α} (h: ∀ x ∈ s, a ≠ x) : a ∉ s :=by
+  induction s; simp; rename_i head tail ind
+  simp_all only [ne_eq, mem_cons, or_true, not_false_eq_true, implies_true, forall_const,
+    forall_true_left, forall_eq_or_imp, not_sym, or_self]
 
 
 -- NAT

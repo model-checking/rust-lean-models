@@ -153,7 +153,6 @@ def ListCharPos_aux (s: Str) (i: Nat):= match s with
             | _::_ => i:: ListCharPos_aux t (i+ Char.utf8Size h)
 
 /- List of the byte positions of all Chars in the String s-/
-@[simp]
 def ListCharPos (s: Str) := ListCharPos_aux s 0
 
 lemma ListCharPos_aux_sound : x ∈ ListCharPos_aux s k ↔ ∃ p, List.IsPrefix p s ∧ p ≠ s ∧ byteSize p + k = x :=by
@@ -188,11 +187,10 @@ lemma ListCharPos_aux_sound : x ∈ ListCharPos_aux s k ↔ ∃ p, List.IsPrefix
   simp only [ne_eq, not_false_eq_true, not_sym, true_implies] at ind;
   simp only [ind.mpr this, or_true]
 
-theorem ListCharPos_sound : x ∈ ListCharPos s ↔ ∃ pf, List.IsPrefix pf s ∧ pf ≠ s ∧ byteSize pf = x :=by
+theorem ListCharPos_sound : x ∈ ListCharPos s ↔ ∃ p, List.IsPrefix p s ∧ p ≠ s ∧ byteSize p = x :=by
   simp only [ListCharPos, ListCharPos_aux_sound, ne_eq, add_zero]
 
 
-@[simp]
 def CharBoundPos_aux (l: Str) (s: Nat): List Nat := match l with
   | [] => [s]
   | h::t => s :: CharBoundPos_aux t (s + Char.utf8Size h)
@@ -258,7 +256,6 @@ lemma ListCharPos_prefix_CharBoundPos_aux : List.IsPrefix (ListCharPos_aux s k) 
   rw[this] at hl; simp only  [succ.injEq] at hl;
   exact ind hl
 
-
 lemma ListCharPos_prefix_CharBoundPos: List.IsPrefix (ListCharPos s) (CharBoundPos s) := by
   unfold CharBoundPos ListCharPos; apply ListCharPos_prefix_CharBoundPos_aux
 
@@ -312,7 +309,8 @@ lemma byteSize_in_CharBoundPos :  (byteSize s) ∈  (CharBoundPos s) := by
   unfold CharBoundPos; rw[byteSize_aux_para1_elim]
   apply byteSize_aux_mem_CharBoundPos_aux
 
-lemma CharBoundPos_eq_ListCharPos_cc_byteSize: CharBoundPos s = (ListCharPos s)++[byteSize s] := by
+theorem CharBoundPos_EQ : CharBoundPos s = CharBoundPos_def s := by
+  unfold CharBoundPos_def
   have p: List.IsPrefix (ListCharPos s) (CharBoundPos s) := by exact ListCharPos_prefix_CharBoundPos
   unfold List.IsPrefix at p; obtain ⟨t, ht⟩ := p
   have m:  byteSize s ∈ CharBoundPos s := by exact byteSize_in_CharBoundPos
@@ -336,8 +334,13 @@ lemma CharBoundPos_eq_ListCharPos_cc_byteSize: CharBoundPos s = (ListCharPos s)+
   simp only [length_cons, succ.injEq, add_eq_zero, one_ne_zero, and_false, not_false_eq_true,
     not_sym] at tl
 
-theorem CharBoundPos_EQ : CharBoundPos s = CharBoundPos_def s := by
-  rw[CharBoundPos_eq_ListCharPos_cc_byteSize, CharBoundPos_def]
+lemma prefix_byteSize_in_CharBoundPos: List.IsPrefix p s → byteSize p ∈ CharBoundPos s :=by
+  rw[CharBoundPos_EQ, CharBoundPos_def]; intro g;
+  by_cases (p ≠ s)
+  have: byteSize p ∈ ListCharPos s :=by apply ListCharPos_sound.mpr; use p;
+  simp only [mem_append, this, mem_singleton, true_or]
+  rename_i gc; simp only [ne_eq, Decidable.not_not] at gc
+  simp only [gc, mem_append, mem_singleton, or_true]
 
 lemma prefix_byteSize_le_aux  (g: List.IsPrefix p s) : byteSize_aux p k ≤ byteSize_aux s k:=by
   generalize gl: s.length = n
@@ -374,7 +377,6 @@ lemma prefix_byteSize_lt_aux  (g: List.IsPrefix p s) (gl: p.length < s.length): 
   simp_all only [length_cons, succ.injEq, byteSize_aux, gt_iff_lt]
   apply ind g.right (by omega) gn
 
-
 lemma prefix_byteSize_lt (g: List.IsPrefix p s) (gp: p.length < s.length): byteSize p  < byteSize s :=by
   rw[byteSize_aux_para1_elim]; rw[byteSize_aux_para1_elim]; apply prefix_byteSize_lt_aux g gp
 
@@ -391,7 +393,6 @@ lemma byteSize_le_of_length_le (g1: List.IsPrefix p1 s) (g2: List.IsPrefix p2 s)
    (gi: p1.length ≤ p2.length) : byteSize p1 ≤ byteSize p2 :=by
   have g:= List.prefix_of_prefix_length_le g1 g2 gi
   apply prefix_byteSize_le g
-
 
 lemma prefix_of_byteSize_le (g1: List.IsPrefix p1 s) (g2: List.IsPrefix p2 s)
    (gi: byteSize p1 ≤ byteSize p2) : List.IsPrefix p1 p2 :=by
@@ -426,7 +427,7 @@ theorem is_char_boundary_EQ : is_char_boundary s i =  is_char_boundary_def s i :
   unfold is_char_boundary is_char_boundary_def
   have : ∀ m l, m ∈ ListCharPos l ∨ m = byteSize l ↔ m ∈ (ListCharPos l ++ [byteSize l]) :=by
     intro m l; simp only [ListCharPos,byteSize, mem_append, mem_singleton]
-  rw[this, ← CharBoundPos_eq_ListCharPos_cc_byteSize]
+  rw[this, ← CharBoundPos_def,  ← CharBoundPos_EQ]
   unfold CharBoundPos CharBoundPos_aux
   split; rename_i g; simp only [g, zero_add, mem_cons, true_or]
   split; rename_i g _; simp only [zero_add, mem_cons, g, not_false_eq_true, not_sym, false_or, eq_iff_iff, false_iff]
@@ -434,9 +435,9 @@ theorem is_char_boundary_EQ : is_char_boundary s i =  is_char_boundary_def s i :
   simp only [CharBoundPos, mem_map] at gi; obtain⟨a, ga⟩ := gi; omega
   rename_i gi1 gi2; simp only [zero_add, mem_cons, gi1, not_false_eq_true, not_sym, false_or, eq_iff_iff]
   rw[CharBoundPos_aux_para1_elim]; simp only [CharBoundPos, mem_map]
-  constructor; intro g; rw[ind, is_char_boundary_def, this, ← CharBoundPos_eq_ListCharPos_cc_byteSize, CharBoundPos] at g;
+  constructor; intro g; rw[ind, is_char_boundary_def, this, ← CharBoundPos_def, ← CharBoundPos_EQ, CharBoundPos] at g;
   use i - Char.utf8Size h; simp only [g, true_and]; omega
-  intro g; obtain⟨a, ga⟩ := g ; rw[ind, is_char_boundary_def, this,  ← CharBoundPos_eq_ListCharPos_cc_byteSize, CharBoundPos]
+  intro g; obtain⟨a, ga⟩ := g ; rw[ind, is_char_boundary_def, this, ← CharBoundPos_def,  ← CharBoundPos_EQ, CharBoundPos]
   have :  i - Char.utf8Size h = a := by omega
   rw[this]; simp only [ga]
 
@@ -673,8 +674,12 @@ def PrefixFromPos_safe_r (s: Str) (i: Nat): Str := match s with
 def PrefixFromPos (s: Str) (i: Nat): Option Str :=
       if is_char_boundary s i then some (PrefixFromPos_safe_r s i) else none
 
+lemma PrefixFromPos_none_sound: PrefixFromPos s i = none ↔ ¬ is_char_boundary s i :=by
+  unfold PrefixFromPos
+  split; rename_i g; simp only [g, not_true_eq_false]
+  rename_i g; simp only [g, Bool.false_eq_true, not_false_eq_true, not_sym]
 
-lemma PrefixFromPos_verified: PrefixFromPos s i = some p ↔ (List.IsPrefix p s) ∧ (byteSize p = i) := by
+lemma PrefixFromPos_some_sound: PrefixFromPos s i = some p ↔ (List.IsPrefix p s) ∧ (byteSize p = i) := by
   unfold PrefixFromPos ;
   split; simp only [Option.some.injEq, byteSize]
   induction s generalizing i p
@@ -727,7 +732,7 @@ lemma PrefixFromPos_verified: PrefixFromPos s i = some p ↔ (List.IsPrefix p s)
 
 lemma PrefixFromPos_byteSize : PrefixFromPos s i = some p →  byteSize p = i := by
   intro h ;
-  have h1 := PrefixFromPos_verified.mp h
+  have h1 := PrefixFromPos_some_sound.mp h
   exact h1.right
 
 lemma is_char_boundary_from_prefix (h: PrefixFromPos s i = some pre)
@@ -736,10 +741,10 @@ lemma is_char_boundary_from_prefix (h: PrefixFromPos s i = some pre)
   split at h; assumption; contradiction
 
 lemma PrefixFromPos_self: PrefixFromPos s0 (byteSize s0) = some s0 :=by
-  apply PrefixFromPos_verified.mpr; simp
+  apply PrefixFromPos_some_sound.mpr; simp
 
 lemma PrefixFromPos_prefix (hp: List.IsPrefix i s) : PrefixFromPos s (byteSize i) = some i := by
-  apply PrefixFromPos_verified.mpr; simp [hp]
+  apply PrefixFromPos_some_sound.mpr; simp [hp]
 
 lemma PrefixFromPos_eq_split_at_none: PrefixFromPos s i = none ↔  split_at s i = none :=by
   simp only [PrefixFromPos, ite_eq_right_iff, not_false_eq_true, not_sym, imp_false,

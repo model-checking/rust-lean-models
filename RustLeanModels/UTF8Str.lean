@@ -1,10 +1,12 @@
 -- Copyright Kani Contributors
 -- SPDX-License-Identifier: Apache-2.0 OR MIT
 import RustLeanModels.Basic
+import RustLeanModels.RustString
 import Lean
 open Char
 open List
 open Mathlib
+open RustString
 open Nat
 set_option maxHeartbeats 10000000
 
@@ -37,7 +39,6 @@ axiom Char_size_eq_of_firstbyte_eq {c1 c2: Char} : toByte c1 0 (by linarith [@ut
 
 axiom exists_byte_ne_of_Chat_ne {c1 c2: Char} :
   c1 ≠ c2 → ∃ i g1 g2, toByte c1 i g1 ≠ toByte c2 i g2
-
 
 /-
 The Char_toUTF8 function converts a Char into it UTF8 encoding.
@@ -144,7 +145,7 @@ lemma char_eq_of_toByteList_prefix : List.IsPrefix (Char_toUTF8 c1) (Char_toUTF8
   have ge : Char_toUTF8 c1 = Char_toUTF8 c2:= by apply prefix_eq_self g l3
   exact Char_toUTF8_eq_iff_eq.mp ge
 
-theorem prefix_iff_listByte_prefix : List.IsPrefix (Str_toUTF8 p) (Str_toUTF8 s) ↔ List.IsPrefix p s := by
+lemma prefix_iff_listByte_prefix : List.IsPrefix (Str_toUTF8 p) (Str_toUTF8 s) ↔ List.IsPrefix p s := by
   induction p generalizing s
   simp only [Str_toUTF8, _root_.nil_prefix]
   rename_i hp tp ind
@@ -170,3 +171,38 @@ theorem prefix_iff_listByte_prefix : List.IsPrefix (Str_toUTF8 p) (Str_toUTF8 s)
   rw [g.left];
   apply (prefix_append_right_inj (Char_toUTF8 hs)).mpr
   simp only [ind.mpr, g.right]
+
+lemma Str_toUTF8_append: Str_toUTF8 (s1 ++ s2) = Str_toUTF8 s1 ++ Str_toUTF8 s2 :=by
+  induction s1
+  simp only [nil_append, Str_toUTF8]
+  rename_i h1 t1 ind
+  simp only [Str_toUTF8, append_eq, ind, append_assoc]
+
+lemma Str_toUTF8_eq_iff_eq: Str_toUTF8 s1 = Str_toUTF8 s2 ↔ s1 = s2 :=by
+  constructor
+  induction s1 generalizing s2
+  cases s2; simp only [imp_self]
+  simp only [Str_toUTF8, nil_eq_append, Char_toUTF8_ne_nil, false_and, not_false_eq_true, not_sym, imp_self]
+  rename_i h1 t1 ind
+  cases s2
+  simp only [Str_toUTF8, append_eq_nil, Char_toUTF8_ne_nil, false_and, not_false_eq_true, not_sym, imp_self]
+  rename_i h2 t2
+  simp only [Str_toUTF8, cons.injEq]
+  intro g
+  have g1: List.IsPrefix (Char_toUTF8 h1) (Char_toUTF8 h1 ++ Str_toUTF8 t1):=by simp only [prefix_append]
+  have g2: List.IsPrefix (Char_toUTF8 h2) (Char_toUTF8 h1 ++ Str_toUTF8 t1):=by simp only [g, prefix_append]
+  have gp:= List.prefix_or_prefix_of_prefix g1 g2
+  have ge: h1 = h2 :=by
+    cases gp; exact char_eq_of_toByteList_prefix (by assumption); symm; exact char_eq_of_toByteList_prefix (by assumption)
+  simp only [ge, true_and]; simp only [ge, append_cancel_left_eq] at g
+  exact ind g
+  intro g; simp only [g]
+
+lemma Str_toUTF8_length: (Str_toUTF8 s).length = byteSize s:=by
+  induction s
+  simp only [Str_toUTF8, length_nil, byteSize]
+  rename_i ind
+  simp only [Str_toUTF8, length_append, Char_toUTF8_length, ind, byteSize]
+
+lemma Str_toUTF8_take_prefix: List.IsPrefix p s → (Str_toUTF8 s).take (byteSize p) = Str_toUTF8 p :=by
+  intro g; rw[← @Str_toUTF8_length p, prefix_eq_take]; exact prefix_iff_listByte_prefix.mpr g

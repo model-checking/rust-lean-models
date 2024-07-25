@@ -2,6 +2,7 @@
 -- SPDX-License-Identifier: Apache-2.0 OR MIT
 import RustLeanModels.Basic
 import RustLeanModels.RustString
+import RustLeanModels.UTF8Str
 import Lean
 open RustString
 open List
@@ -28,7 +29,6 @@ lemma substring_charIndex_map : substring_charIndex s ss = some i →
   . exact substring_charIndex_some_sound.mpr gj
   . unfold is_first_substringcharIndex at gj
     exact gj.right (i + v.length) gi
-
 
 lemma sub_split_map (gss: ss.length > 0):
     (split_substring s ss).length ≤  (split_substring (List.map f (v++s)) (List.map f ss)).length :=by
@@ -70,3 +70,13 @@ lemma sub_split_map (gss: ss.length > 0):
 lemma split_map (gss: ss.length > 0):
     (split_substring s ss).length ≤  (split_substring (List.map f s) (List.map f ss)).length :=by
   have := @sub_split_map s ss f [] gss; simp only [nil_append] at this; exact this
+
+/- An example of using UTF8Str-/
+lemma exists_Str_toUTF8_prefix_of_char_boundary: is_char_boundary s i → ∃ p, List.IsPrefix p s ∧ (Str_toUTF8 s).take i = Str_toUTF8 p :=by
+  intro g
+  generalize gx: PrefixFromPos s i = op
+  have gx1:= gx
+  simp only [PrefixFromPos, g, ↓reduceIte] at gx; symm at gx; rw[gx] at gx1
+  generalize gp: PrefixFromPos_safe_r s i = p
+  rw[gp] at gx1; have gx1:= PrefixFromPos_some_sound.mp gx1
+  use p; simp only [gx1, true_and]; rw[← gx1.right]; exact Str_toUTF8_take_prefix gx1.left

@@ -15,16 +15,16 @@ Variable naming conventions:
 -Assumptions (Prop): starts with g  (I save h for h::t)
 -Strings (Str): s, s1, s2, (h::t)
 -Substrings (Str): ss
--Prefix (Str): p p1 p2
--Character (Char): c
--Pattern: P
--Char filter (Char → Bool): f
--Position, Index (Nat) : i j
--Word (member of a split) (Str) : w
--General Nat: m n
--List nat: l
--Element of list, input of function: x
--Extra parameter in aux functions: k
+-Prefixes (Str): p p1 p2
+-Characters (Char): c
+-Patterns: P
+-Char filters (Char → Bool): f
+-Positions, Indexes (Nat) : i j
+-Words (members of a split) (Str) : w
+-General Nats: m n
+-Lists Nat: l
+-Elements of list, inputs of function: x
+-Extra parameters in aux functions: k
 -/
 
 namespace RustString
@@ -803,81 +803,53 @@ def floor_char_boundary_aux (s: Str) (i: Nat) (k: Nat): Nat := match s with
 
 def floor_char_boundary (s: Str) (i: Nat) := floor_char_boundary_aux s i 0
 
-lemma sub_floor_char_boundary_sound1: flp = floor_char_boundary_aux s i k → flp ≥ k := by
-  induction s generalizing i k flp
-  unfold floor_char_boundary_aux; intro h; rw[h]; simp only [ge_iff_le]
+lemma floor_char_boundary_aux_ge: floor_char_boundary_aux s i k  ≥ k := by
+  induction s generalizing i k
+  unfold floor_char_boundary_aux; simp only [ge_iff_le, le_refl]
   rename_i h t ind
-  unfold floor_char_boundary_aux; split; intro h; rw[h];
-  intro g; have ind:= ind g ; linarith
+  unfold floor_char_boundary_aux; split; simp only [ge_iff_le, le_refl]
+  have ind:= @ind (i - h.utf8Size) (k + h.utf8Size) ; linarith
 
-lemma sub_floor_char_boundary_sound2: floor_char_boundary_aux s i k = k + floor_char_boundary s i := by
+lemma floor_char_boundary_aux_para1_elim: floor_char_boundary_aux s i k = k + floor_char_boundary s i := by
   unfold floor_char_boundary
   induction s generalizing i k
   unfold floor_char_boundary_aux; simp only [add_zero]
   rename_i h t ind
   unfold floor_char_boundary_aux; split; simp only [add_zero]
   rw[ind]; simp only [zero_add];
-  have : floor_char_boundary_aux t (i - Char.utf8Size h) (Char.utf8Size h) = Char.utf8Size h + floor_char_boundary_aux t (i - Char.utf8Size h) 0 := by apply ind
+  have : floor_char_boundary_aux t (i - Char.utf8Size h) (Char.utf8Size h) =
+        Char.utf8Size h + floor_char_boundary_aux t (i - Char.utf8Size h) 0 := by apply ind
   rw[this]; linarith
 
+def is_floor_char_boundary (s: Str) (i: Nat) (fcb: Nat) := ((is_char_boundary s fcb) ∧ (fcb ≤ i)) ∧ (∀ j, ((is_char_boundary s j) ∧ (j ≤ i)) → j ≤ fcb )
 
-theorem floor_char_boundary_sound:  fcb = floor_char_boundary s i
-      ↔ (is_char_boundary s fcb) ∧ (fcb ≤ i) ∧ (∀ j, ((is_char_boundary s j) ∧ (j ≤ i)) → j ≤ fcb ) :=by
+theorem floor_char_boundary_sound:  floor_char_boundary s i = fcb ↔ is_floor_char_boundary s i fcb :=by
+  apply Eq_iff_of_unique_and_mp unique_maxima ; intro fcb
   induction s generalizing i fcb
   unfold floor_char_boundary floor_char_boundary_aux is_char_boundary at *
-  constructor; intro g; rw[g];
-  simp only [beq_self_eq_true, _root_.zero_le, beq_iff_eq, nonpos_iff_eq_zero, and_imp, forall_eq,
-    imp_self, and_self]
-  simp only [ite_eq_left_iff, not_false_eq_true, not_sym, imp_false, not_not, and_imp, forall_eq,
-    _root_.zero_le, forall_true_left, and_true]
-  intro g; simp only [beq_iff_eq] at g;  simp only [g, _root_.zero_le, beq_iff_eq,
-    nonpos_iff_eq_zero, forall_eq, imp_self]
+  intro g; rw[← g];
+  simp only [beq_self_eq_true, _root_.zero_le, and_self, beq_iff_eq, nonpos_iff_eq_zero, and_imp, forall_eq, imp_self]
   rename_i h t ind
   unfold is_char_boundary floor_char_boundary floor_char_boundary_aux
-  constructor; intro g
-  split at g; rw[g]; simp only [↓reduceIte, _root_.zero_le, ite_eq_left_iff,
-    Bool.ite_eq_true_distrib, not_false_eq_true, not_sym, if_false_left, not_lt, nonpos_iff_eq_zero,
-    and_imp, true_and]
-  intro j gj1 gj2; omega
-  have gj:= sub_floor_char_boundary_sound1 g
-  have gj: ¬ (fcb < Char.utf8Size h) := by linarith
+  intro g
+  split at g; rw[← g];
+  simp only [↓reduceIte, _root_.zero_le, and_self, Bool.if_false_left,
+    Bool.if_true_left, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true, Bool.not_eq_true',
+    decide_eq_false_iff_not, not_lt, nonpos_iff_eq_zero, and_imp, forall_eq_or_imp, imp_self, true_and]
+  intro a g1 _ g3; omega
+  split; rename_i g;
   have gj2: Char.utf8Size h > 0 :=by apply Char.utf8Size_pos
-  have gj2: ¬ fcb = 0 := by linarith
-  simp only [gj2, not_false_eq_true, not_sym, ↓reduceIte, gj, ite_eq_left_iff,
-    Bool.ite_eq_true_distrib, if_false_left, not_lt, and_imp]
-  rw[sub_floor_char_boundary_sound2] at g;
+  rename_i gf ; symm at gf; have gj:= @floor_char_boundary_aux_ge t (i - h.utf8Size) (0 + h.utf8Size); omega
+  simp only [Bool.if_false_left, Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not,
+    not_lt, Bool.if_true_left, Bool.or_eq_true, decide_eq_true_eq, and_imp, forall_eq_or_imp,
+    _root_.zero_le, imp_self, true_and]
+  simp only [zero_add, floor_char_boundary_aux_para1_elim] at g;
   have g: fcb - Char.utf8Size h = floor_char_boundary t (i - Char.utf8Size h) :=by omega
-  have ind:= ind.mp g; simp only [ind, true_and]
-  constructor; omega; intro p0 gi0 gi01 ;
-  have indr := ind.right.right
-  by_cases (p0=0); linarith; rename_i v1;
-  have gi0:= gi0 v1; have indr:= indr (p0 - Char.utf8Size h);
-  simp only [gi0, tsub_le_iff_right, true_and] at indr; omega
-  --mpr
-  split; rename_i gf; rw[gf];
-  simp only [_root_.zero_le, ite_eq_left_iff, Bool.ite_eq_true_distrib,not_false_eq_true,
-      not_sym, if_false_left, not_lt, nonpos_iff_eq_zero, and_imp, true_and, zero_add]
-  split; simp only [implies_true];
-  intro g; have: ¬ Char.utf8Size h = 0 := by apply Nat.ne_of_gt; apply Char.utf8Size_pos
-  have g:=g (Char.utf8Size h);
-  simp only [this, not_false_eq_true, not_sym, le_refl, ge_iff_le, tsub_eq_zero_of_le,
-    is_char_boundary_zero, and_self, forall_true_left, imp_false, not_le] at g
-  omega; intro g; simp only [Bool.ite_eq_true_distrib, not_false_eq_true, not_sym, if_false_left,
-    not_lt, ite_eq_left_iff, and_imp] at g
-  have :¬ i < Char.utf8Size h := by omega
-  simp only [this, ↓reduceIte, zero_add]; rw[sub_floor_char_boundary_sound2]
-  have id1: is_char_boundary t (fcb-Char.utf8Size h) = true ∧ fcb - Char.utf8Size h ≤ i -Char.utf8Size h
-        ∧ ∀ (j : ℕ), is_char_boundary t j = true ∧ j ≤ i -Char.utf8Size h → j ≤ fcb - Char.utf8Size h := by
-    constructor; exact g.left.right; constructor; omega
-    intro j gj; have g:= g.right.right (j + Char.utf8Size h)
-    have : ¬j + Char.utf8Size h = 0 := by
-      have : Char.utf8Size h > 0:= by apply Char.utf8Size_pos
-      omega
-    simp only [this, not_false_eq_true, not_sym, le_add_iff_nonneg_left, _root_.zero_le,
-      add_tsub_cancel_right, gj.left, and_self, forall_true_left] at g
-    have : j + Char.utf8Size h ≤ i :=by omega
-    simp only [this, forall_true_left] at g; omega
-  have ind:= ind.mpr id1; omega
+  symm at g
+  have ind:= ind (fcb - h.utf8Size) g; simp only [ind, and_true]
+  constructor; omega; intro p0 g1 g2 g3;
+  have ind := ind.right (p0 - h.utf8Size) ⟨g2, (by omega)⟩
+  omega
 
 
 /-
@@ -901,15 +873,15 @@ def ceiling_char_boundary_aux (s: Str) (i: Nat) (k: Nat): Nat := match s with
 def ceiling_char_boundary (s: Str) (i: Nat) := ceiling_char_boundary_aux s i 0
 
 
-lemma sub_ceiling_char_boundary_sound1: ccb = ceiling_char_boundary_aux s i k → ccb ≥ k := by
-  induction s generalizing i k ccb
-  unfold ceiling_char_boundary_aux; intro h; rw[h]; simp only [ge_iff_le]
+lemma ceiling_char_boundary_aux_ge: ceiling_char_boundary_aux s i k  ≥ k := by
+  induction s generalizing i k
+  unfold ceiling_char_boundary_aux; simp only [ge_iff_le, le_refl]
   rename_i h t ind
-  unfold ceiling_char_boundary_aux; split; intro h; rw[h];
-  split; intro g; linarith;
-  intro g; have ind:= ind g ; linarith
+  unfold ceiling_char_boundary_aux; split; simp only [ge_iff_le, le_refl]
+  split; simp only [ge_iff_le, le_add_iff_nonneg_right, _root_.zero_le]
+  have ind:= @ind (i - h.utf8Size) (k + h.utf8Size) ; linarith
 
-lemma sub_ceiling_char_boundary_sound2: ceiling_char_boundary_aux s i k = k + ceiling_char_boundary s i := by
+lemma ceiling_char_boundary_aux_para1_elim: ceiling_char_boundary_aux s i k = k + ceiling_char_boundary s i := by
   unfold ceiling_char_boundary
   induction s generalizing i k
   unfold ceiling_char_boundary_aux; simp only [add_zero]
@@ -928,88 +900,48 @@ theorem ceiling_char_boundary_sound_sp_case (gis: i > byteSize s) : ceiling_char
   rw[byteSize_cons] at *; simp only [ceiling_char_boundary, ceiling_char_boundary_aux]
   have i1: ¬ i = 0 := by omega
   have i2: ¬ i < Char.utf8Size h := by omega
-  simp only [i1, not_false_eq_true, not_sym, ↓reduceIte, i2, zero_add, sub_ceiling_char_boundary_sound2]
+  simp only [i1, not_false_eq_true, not_sym, ↓reduceIte, i2, zero_add, ceiling_char_boundary_aux_para1_elim]
   have i1: i - Char.utf8Size h > byteSize t := by omega
   have ind:=ind i1; rw[ind]
 
+def is_ceiling_char_boundary (s: Str) (i: Nat) (ccb: Nat):= ((is_char_boundary s ccb) ∧ (ccb ≥  i)) ∧ (∀ j, ((is_char_boundary s j) ∧ (j ≥  i)) → j ≥ ccb )
 
-theorem ceiling_char_boundary_sound (gis: i ≤ byteSize s): ccb = ceiling_char_boundary s i
-          ↔ (is_char_boundary s ccb) ∧ (ccb ≥  i) ∧ (∀ j, ((is_char_boundary s j) ∧ (j ≥  i)) → j ≥  ccb ) :=by
+theorem ceiling_char_boundary_sound (gis: i ≤ byteSize s): ceiling_char_boundary s i = ccb
+          ↔ is_ceiling_char_boundary s i ccb :=by
+  apply Eq_iff_of_unique_and_mp unique_minima ; intro ccb
   induction s generalizing i ccb
   simp only [byteSize, byteSize_aux, nonpos_iff_eq_zero] at gis; rw[gis]
   unfold ceiling_char_boundary ceiling_char_boundary_aux is_char_boundary
-  constructor; intro g; rw[g]
-  simp only [beq_self_eq_true, ge_iff_le, le_refl, beq_iff_eq, _root_.zero_le, and_true,
-    implies_true, and_self]
-  simp only [beq_iff_eq, ge_iff_le, _root_.zero_le, and_true, forall_eq, nonpos_iff_eq_zero,
-    true_and, and_self, imp_self]
+  intro g; rw[← g]
+  simp only [beq_self_eq_true, ge_iff_le, le_refl, and_self, beq_iff_eq, _root_.zero_le, and_true, implies_true]
   rename_i h t ind
   unfold ceiling_char_boundary ceiling_char_boundary_aux is_char_boundary
-  constructor; intro g
-  split at g; rw[g]; rename_i gi; rw[gi]
-  simp only [↓reduceIte, ge_iff_le, le_refl, ite_eq_left_iff, Bool.ite_eq_true_distrib,
-    not_false_eq_true, not_sym, if_false_left, not_lt, _root_.zero_le, and_true, implies_true,
-    forall_const, and_self]
-  split at g;
+  intro g; split at g; rw[← g]; rename_i gi; rw[gi]
+  simp only [↓reduceIte, ge_iff_le, le_refl, and_self, Bool.if_false_left, Bool.if_true_left,
+    Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true, Bool.not_eq_true',
+    decide_eq_false_iff_not, not_lt, _root_.zero_le, and_true, implies_true]
   have i1: Char.utf8Size h > 0 := by apply Char.utf8Size_pos
-  simp only [zero_add] at g
-  have i2: ¬ ccb = 0 := by linarith
-  rw[g]; rename_i gi; simp only [lt_self_iff_false, ↓reduceIte, ge_iff_le, le_refl,
-    tsub_eq_zero_of_le, ite_eq_left_iff, Bool.ite_eq_true_distrib, not_false_eq_true, not_sym,
-    if_false_left, not_lt, and_imp]
-  have e1: is_char_boundary t 0 = true :=by apply is_char_boundary_zero
-  have i1: i ≤ Char.utf8Size h := by linarith
-  simp only [e1, implies_true, i1, true_and]
-  intro j gj1 gj2; omega
-  have gj:= sub_ceiling_char_boundary_sound1 g
-  have gj: ¬ (ccb < Char.utf8Size h) := by linarith
-  have gj2: Char.utf8Size h > 0 :=by apply Char.utf8Size_pos
-  have gj2: ¬ ccb = 0 := by linarith
-  simp only [gj2, not_false_eq_true, not_sym, ↓reduceIte, gj, ite_eq_left_iff,
-    Bool.ite_eq_true_distrib, if_false_left, not_lt, and_imp]
-  rw[sub_ceiling_char_boundary_sound2] at g;
+  split at g; simp only [zero_add] at g
+  rw[← g]; rename_i gi;
+  simp only [lt_self_iff_false, ↓reduceIte, le_refl, tsub_eq_zero_of_le, is_char_boundary_zero,
+    ite_self, ge_iff_le, true_and, Bool.if_false_left, Bool.if_true_left, Bool.or_eq_true,
+    decide_eq_true_eq, Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not, not_lt,
+    and_imp, forall_eq_or_imp, nonpos_iff_eq_zero]
+  constructor; omega; constructor; intro _; contradiction
+  intro a g1 _ _ ; exact g1
+  have := @ceiling_char_boundary_aux_ge t (i - h.utf8Size) (0 + h.utf8Size);
+  split; omega; split; omega
+  simp only [zero_add, ceiling_char_boundary_aux_para1_elim] at g;
   have g: ccb - Char.utf8Size h = ceiling_char_boundary t (i - Char.utf8Size h) :=by omega
-  have i1: i - Char.utf8Size h ≤ byteSize t := by
-    simp only [byteSize] at gis ; omega
-  have ind:= (ind i1).mp g; simp only [ind, true_and]
-  constructor; omega; intro p0 gi0 gi01 ;
-  have indr := ind.right.right
-  by_cases (p0=0); linarith; rename_i v1;
-  have gi0:= gi0 v1; have indr:= indr (p0 - Char.utf8Size h);
-  simp only [gi0, tsub_le_iff_right, true_and] at indr
+  simp only [byteSize] at gis; symm at g
+  have id1: (i - h.utf8Size) ≤  byteSize t := by omega
+  have ind:= ind id1 (ccb - h.utf8Size) g
+  constructor
+  simp only [ind, ge_iff_le, true_and]; omega
+  intro p0; split; intro _; omega
+  split; simp only [ge_iff_le, false_and, false_implies]
+  intro gp0; have gp0:= ind.right (p0 - h.utf8Size) ⟨gp0.left, (by omega)⟩
   omega
-  --mpr
-  have gch: Char.utf8Size h > 0 :=by apply  Char.utf8Size_pos
-  simp only [ite_eq_left_iff, Bool.ite_eq_true_distrib, not_false_eq_true, not_sym, if_false_left,
-    not_lt, ge_iff_le, and_imp, zero_add]
-  split; rename_i gi; rw[gi]
-  simp only [_root_.zero_le, forall_true_left]
-  intro _ g2; have g2:= g2 0;
-  simp only [not_true_eq_false, nonpos_iff_eq_zero, ge_iff_le, _root_.zero_le,
-    tsub_eq_zero_of_le, IsEmpty.forall_iff, forall_true_left] at g2; exact g2
-  intro g1 g2 g3;
-  have i1: ¬ ccb = 0:= by omega
-  have g1:= g1 i1;
-  split;
-  have g3:= g3 (Char.utf8Size h);
-  have i1: i ≤ Char.utf8Size h:= by omega
-  have i2: is_char_boundary t 0 := is_char_boundary_zero
-  simp only [le_refl, ge_iff_le, tsub_eq_zero_of_le, i2, and_self, implies_true, i1,
-    forall_true_left] at g3
-  omega
-  rw[sub_ceiling_char_boundary_sound2]
-  have id1: is_char_boundary t (ccb - Char.utf8Size h) = true ∧ ccb - Char.utf8Size h ≥ i - Char.utf8Size h ∧
-      ∀ (j : ℕ), is_char_boundary t j = true ∧ j ≥ i - Char.utf8Size h → j ≥ ccb - Char.utf8Size h := by
-    constructor; exact g1.right; constructor; omega
-    intro j gj; have g3:= g3 (j+ Char.utf8Size h)
-    have i1: ¬j + Char.utf8Size h = 0 := by omega
-    have i2: Char.utf8Size h ≤ j + Char.utf8Size h:= by omega
-    have i3: i ≤ j + Char.utf8Size h  := by omega
-    simp only [i1, not_false_eq_true, not_sym, i2, add_tsub_cancel_right, gj.left, and_self,
-      forall_true_left, i3] at g3
-    omega
-  have : i - Char.utf8Size h ≤  byteSize t := by rw [byteSize_cons] at gis; omega
-  have ind:= (ind this).mpr id1 ; omega
 
 
 --#eval ListCharPos "L∃∀N".data
@@ -4736,7 +4668,6 @@ theorem replacen_char_filter_EQ
   rw[sub_replacen_char_filter_EQ (by omega), ← splitn_char_filter, ind]
   rename_i gn; simp only [not_lt, nonpos_iff_eq_zero] at gn
   simp only [gn, ↓reduceIte, str_concat_pad]
-
 
 
 def replacen (s: Str) (P: Pattern) (sr: Str) (n: Nat):= match P with

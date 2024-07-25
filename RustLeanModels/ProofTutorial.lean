@@ -61,8 +61,8 @@ lemma LCP_length_correct_mp : LCP_length s1 s2 = l → is_LCP_length s1 s2 l:= b
         simp only [← gp1.left, ← gp2.left, not_true_eq_false] at gh
 
 /- For the modus ponen reverse (mpr) direction, we can prove it by induction,
-  but it is more convenient if we use the "mpr_of_unique" theorem (Basic.lean) instead
-  (see the definition of "unique" and "mpr_of_unique" in Basic.lean for more details)
+  but it is more convenient if we use the "Eq_iff_of_unique_and_mp" theorem (Basic.lean) instead
+  (see the definition of "unique" and "Eq_iff_of_unique_and_mp" in Basic.lean for more details)
 -/
 
 /- First, we need to prove that the function "is_LCP_length s1 s2 : Nat → Prop" is "unique"
@@ -78,7 +78,7 @@ lemma is_LCP_length_unique:  unique (is_LCP_length s1 s2) := by
 
 /- The correctness theorem-/
 theorem LCP_length_correct : LCP_length s1 s2 = l ↔ is_LCP_length s1 s2 l := by
-  apply mpr_of_unique (by intro l ; exact LCP_length_correct_mp) is_LCP_length_unique
+  apply Eq_iff_of_unique_and_mp is_LCP_length_unique (by intro l ; exact LCP_length_correct_mp)
 
 /-Sometimes the function is defined recursively with extra parameters.
   In this case, there is an _aux function with the extra parameters
@@ -550,6 +550,5 @@ lemma LCS_length_correct_mp: (LCS_length s1 s2  = lc) →  (is_LCS_length s1 s2 
         rw[g]; simp only [g0, max_eq_right, add_zero]
 
 theorem LCS_length_correct: LCS_length s1 s2  = l ↔ is_LCS_length s1 s2 l :=by
-  apply mpr_of_unique _ is_LCS_length_unique
+  apply Eq_iff_of_unique_and_mp is_LCS_length_unique
   intro l g; exact (@LCS_length_correct_mp s1 s2 l 1 g).left
-

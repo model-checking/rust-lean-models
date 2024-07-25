@@ -46,10 +46,10 @@ lemma unique_maxima {p: Nat → Prop}: unique (fun x => p x ∧ (∀ y, p y → 
   have := g2.right x g1.left
   omega
 
-theorem mpr_of_unique : (∀ y, (x = y) → p y) → unique p → (∀ y, ((x = y) ↔  p y)) := by
-  intro g1 g2 y; constructor; exact g1 y; intro g3
-  have g1:= g1 x; simp only [true_implies] at g1
-  unfold unique at g2; exact g2 x y g1 g3
+theorem Eq_iff_of_unique_and_mp : unique p → (∀ y, (x = y) → p y) → (∀ y, ((x = y) ↔  p y)) := by
+  intro g1 g2 y; constructor; exact g2 y; intro g3
+  have g2:= g2 x; simp only [true_implies] at g2
+  unfold unique at g1; exact g1 x y g2 g3
 
 @[simp]
 lemma not_sym :  ¬ x = y →  ¬ y = x := by intro g; by_contra; rename_i g1; symm at g1; contradiction

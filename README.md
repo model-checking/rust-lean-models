@@ -106,8 +106,18 @@ In some cases, constructing a non-induction proof using the definitional version
 - For example, the function `is_char_boundary` has a definitional version: 
 
     ```lean
-    def is_char_boundary_def (s: Str) (p: Nat) := p ∈ (ListCharPos s ++ [byteSize s])
+    def is_char_boundary_def (s: Str) (i: Nat) := i ∈ ListCharPos s ∨  i = byteSize s
     ```
+
+    a recursive definition:
+
+    ```lean
+    def is_char_boundary (s: Str) (i: Nat) := match s with
+    | [] => i == 0
+    | h::t => if i = 0 then true else
+        if i < Char.utf8Size h then false else is_char_boundary t (i - Char.utf8Size h)
+    ```
+
 
     and an equivalence theorem 
     
@@ -142,7 +152,17 @@ then define the definitional version based on them.
 ### When the Rust documentation describes properties of the return value 
 We state and prove a soundness theorem for the function with
 name: `func_name_sound` and type: `x = func_name input1 input2 ...  ↔ properties of x`.
-For example, the soundness theorem for the function `floor_char_boundary` is 
+For example, the soundness theorem for the function `floor_char_boundary` defined as:
+
+```lean
+def floor_char_boundary_aux (s: Str) (i: Nat) (k: Nat): Nat := match s with
+  | [] => k
+  | h::t => if i < Char.utf8Size h then k else floor_char_boundary_aux t (i - Char.utf8Size h) (k + Char.utf8Size h)
+
+def floor_char_boundary (s: Str) (i: Nat) := floor_char_boundary_aux s i 0
+```
+
+is
 
 ```lean
 theorem floor_char_boundary_sound:  flp = floor_char_boundary s p

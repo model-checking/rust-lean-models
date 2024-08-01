@@ -18,10 +18,10 @@ lemma exists_minima_prop_nat {p: Nat → Prop} : (∃ x , p x) → ∃ m, (p m) 
   induction n using Nat.strong_induction_on
   rename_i n ind
   by_cases (∀ m < n, ¬ p m ); rename_i gm
-  . exists n ; simp only [gn, true_and]; intro x gx ;
+  · exists n ; simp only [gn, true_and]; intro x gx ;
     by_contra; rename_i gc; simp only [not_le] at gc;
     have gm := gm x gc; contradiction
-  . rename_i gm ; simp only [not_forall, not_not, exists_prop] at gm; obtain ⟨m,gm⟩:=gm
+  · rename_i gm ; simp only [not_forall, not_not, exists_prop] at gm; obtain ⟨m,gm⟩:=gm
     have ind:= ind m gm.left gm.right ; obtain⟨x,gx⟩:= ind
     use x;
 

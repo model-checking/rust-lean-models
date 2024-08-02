@@ -5,10 +5,11 @@
 ## Rust Iterator 
 
 ## Data type conversion
-- Iterator is converted to `List` in Lean. There are many equivalences in Lean library of List for Iterator's functions.
+- The `Iterator` trait is converted to `List` in Lean. Many functions defined in Lean's core are
+equivalent to Rust functions that operate on iterators.
 
 
-## Implemented functions in Iterator.lean
+## Functions implemented in Iterator.lean
 
 | Rust Iterator function                 | Lean equivalent function       | Description link |
 | ----------------------------- | ------------------- | ---------------------- |
@@ -16,7 +17,7 @@
 | std::iter::Iterator::next |   next    | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.next |
 | std::iter::Iterator::peek |   peek    | https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.peek |
 
-## Implemented functions in Lean library of List
+## Functions already defined in Lean
 
 | Rust Iterator function                 | Lean equivalent function       | Description link |
 | ----------------------------- | ------------------- | ---------------------- |

@@ -11,12 +11,12 @@ This assumes that overflow exceptions will not happen. Note that overflow except
 in Rust programs which use usize for String indexing when the Strings size are GBs.
 - Byte Lists (for UTF8 conversion) are represented as `List Nat` in Lean. Strings are converted from `List Char` to `List Nat` by the function `Str_toUTF8`. 
   This function ensures that the output is a valid UTF8 string. We use three axioms: `Char_Pos0`, `Char_Diff`, and `Char_Size` which describe
-  the properties of UTF8 encoding (see `RustLeanModels\UTF8Str.lean`).
+  the properties of UTF8 encoding (see [RustLeanModels/UTF8Str.lean](UTF8Str.lean)).
 - The trait std::str::pattern::Pattern is converted to the inductive type `Pattern` (see RustString.lean).
 
 
 
-## Implemented functions in RustString
+## Functions defined in RustString
 | Rust String function                 | Equivalent Lean function       | Description link |
 | ----------------------------- | ------------------- | ---------------------- |
 | core::str::bytes |   UTF8Str.Str_toUTF8    | https://doc.rust-lang.org/std/primitive.str.html#method.bytes |
@@ -67,14 +67,16 @@ in Rust programs which use usize for String indexing when the Strings size are G
 
 
 
-## Implemented functions in Lean library for List
+## Functions that already exist in Lean
 | Rust String function                 | Lean equivalent function       | Description link |
 | ----------------------------- | ------------------- | ---------------------- |
 | core::str::chars |   <em>self    | https://doc.rust-lang.org/std/primitive.str.html#method.chars |
 | core::str::is_empty |   List.isEmpty    | https://doc.rust-lang.org/std/primitive.str.html#method.is_empty |
 | core::str::len |   List.length    | https://doc.rust-lang.org/std/primitive.str.html#method.len |
 
+
 ## Limitations
+
 The RustString library does not include:
 - Functions that mutate their input (e.g., `make_ascii_lowercase`), but it includes the cloning version (e.g. `to_ascii_lowercase`).
 - Functions which may panic (e.g., slice indexing), but it includes the non-panicking version (e.g. `str::get`)

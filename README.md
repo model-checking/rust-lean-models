@@ -5,16 +5,17 @@
 
 ## rust-lean-models
 
-Lean models of various Rust libraries to facilitate Lean-based verification of Rust programs.
+Lean models of various functions from Rust libraries to facilitate Lean-based verification of Rust programs.
 
 
 ## Description
-The library defines equivalent Lean versions of functions from the Rust standard library.
-This library is intended to be used for verifying Rust programs via Lean.
+This library is intended to be used for verifying Rust programs via Lean. It
+defines equivalent Lean versions of functions from the Rust standard library.
 
-The Lean implementation is based on the description of the Rust functions, which are published at https://doc.rust-lang.org/std.
+The Lean definitions are based on the description of the Rust functions, which is published at https://doc.rust-lang.org/std.
+
 The library includes:
-- Definitions of functions equivalent to those from the Rust standard library
+- Definitions of Lean functions equivalent to those from the Rust standard library
 - Proofs that these definitions are consistent with the description of the Rust functions
 - Supporting lemmas and theorems for proof construction
 
@@ -42,40 +43,48 @@ The library includes:
 ## Usage
 ### Translating a Rust program 
 
-For any Rust built-in functions which are used in user code, map it with 
-the corresponding function name in the library (see the Tables below).
+Replace the Rust built-in functions that are used in your code with the
+corresponding Lean function in this library.
+
+Tables in [RustString.md](RustLeanModels/RustString.md)
+and [Iterators.md](RustLeanModels/Iterator.md) give the mapping from Rust types
+and functions to their Lean equivalents.
 
 ### Proof Tutorial
+
 We demonstrate the applications of the library and some proof techniques 
-for String programs in 
-[ProofTutorial.lean](https://github.com/model-checking/rust-lean-models/tree/main/RustLeanModels/ProofTutorial.lean)
-through two simple programs that compute the longest common prefix 
-and longest common substring of the two input strings. 
+for string programs in
+[ProofTutorial.lean](https://github.com/model-checking/rust-lean-models/tree/main/RustLeanModels/ProofTutorial.lean).
+This tutorials shows the correctness of two simple programs that compute the longest common prefix
+and longest common substring of the two strings.
 More examples can be found in 
 [ProofExample.lean](https://github.com/model-checking/rust-lean-models/tree/main/RustLeanModels/ProofExample.lean).
 
-## Implementation
+## Details
 
+### Recursive function definitions
 
-### Recursive function definition
 For each Rust function, we provide a recursive Lean function. Implementing 
-the equivalent functions in Lean recursively enables user to construct 
+the equivalent functions in Lean recursively enables user to construct
 induction proofs conveniently. The Lean function has the same name as the Rust original, 
-except when the Rust name clashes with a Lean keyword. In case of a clash, a Rust function 'func_name' 
+except when the Rust name clashes with a Lean keyword. In case of a clash, a Rust function `func_name`
 is renamed to `rust_func_name` in Lean.
 
 Implementing a function recursively may requires some extra parameters.
-In those cases, first, we implement an auxiliary function (name: `func_name_aux`) which is defined 
-recursively with the parameters, then we define the function `func_name` based on the auxiliary function 
-with initial values for the parameters. 
+In those cases, we first define an auxiliary function (name: `func_name_aux`) which is defined
+recursively with the extra parameters, then we define the function `func_name` based on the auxiliary function
+with initial values for the parameters.
 For example, `char_indices` is defined based on `char_indices_aux` as 
-`def char_indices (s: Str) := char_indices_aux s 0`.
+```lean
+def char_indices (s: Str) := char_indices_aux s 0
+```
 
-For Rust functions involving the `Pattern` type, we implement two recursive sub-functions 
-(name: `func_name_char_filter` and  `func_name_substring`) which replace the `Pattern` type 
-in the input by either a char filter (or type`Char → Bool`) or a `List Char`. Then we define 
-the function `func_name` based on these two sub-functions by matching the input of `Pattern` type.
-For example, `split` is defined by two sub-functions `split_char_filter` and `split_substring` as: 
+For Rust functions that use the Rust `Pattern` type, we implement two recursive sub-functions
+(name: `func_name_char_filter` and  `func_name_substring`) that replace the `Pattern` type
+in the input with either a char filter (of type`Char → Bool`) or a string (of type `List Char`).
+Then we define  the function `func_name` based on these two sub-functions by matching the
+input of `Pattern` type. For example, `split` is defined by two sub-functions
+`split_char_filter` and `split_substring` as:
 
 ```lean
 def split (s: Str) (p: Pattern) := match p with
@@ -84,7 +93,8 @@ def split (s: Str) (p: Pattern) := match p with
 | Pattern.FilterFunction f => split_char_filter s f
 | Pattern.WholeString s1 => split_substring s s1
 ```
-All recursive implementations are proven to be "correct" in the sense that 
+
+All recursive implementations are proven to be "correct" in the sense that
 they are consistent with the descriptions of the Rust versions (see below for more details).
 
 ## Correctness Proofs
@@ -118,7 +128,6 @@ In some cases, constructing a non-induction proof using the definitional version
         if i < Char.utf8Size h then false else is_char_boundary t (i - Char.utf8Size h)
     ```
 
-
     and an equivalence theorem 
     
     ```lean
@@ -128,7 +137,7 @@ In some cases, constructing a non-induction proof using the definitional version
 When the description of a Rust function cannot be efficiently expressed in Lean (requires recursions, or is unintuitive),
 we can:
 - Define the definitional version (similar to Case 1) based on a recursive trivial function, then prove the equivalence theorem.
-For example, the `byteSize_def` function is defined on the simple function `sum_list_Nat`
+For example, the `byteSize_def` function is based on the function `sum_list_Nat`
 that computes the sum of a list of natural numbers:
     
     ```lean
@@ -138,20 +147,23 @@ that computes the sum of a list of natural numbers:
 
 - Define and prove the correctness of one/some subordinate function(s), 
 then define the definitional version based on them. 
-    For example, to define `split_inclusive_char_filter_def`, firstly we define and prove the coreectness of two functions:
+    For example, to define `split_inclusive_char_filter_def`, we first define and prove the correctness of two functions:
     - `list_char_filter_charIndex (s: Str) (f: Char → Bool)`: returns the list of positions of characters in `s` satisfying the filter `f`
 
-    - `split_at_charIndex_list (s: Str) (l: List Nat)`: split the strings `s` at positions in `l`
+    - `split_at_charIndex_list (s: Str) (l: List Nat)`: splits the strings `s` at positions in `l`
 
-    then define `split_inclusive_char_filter_def` based on them:
+    then we define `split_inclusive_char_filter_def` as follows:
 
     ```lean
-    def split_inclusive_char_filter_def (s: Str) (f: Char → Bool):= split_at_charIndex_list s (List.map (fun x => x+1) (list_char_filter_charIndex s f))
+    def split_inclusive_char_filter_def (s: Str) (f: Char → Bool) :=
+        split_at_charIndex_list s (List.map (fun x => x+1) (list_char_filter_charIndex s f))
     ```
 
-### When the Rust documentation describes properties of the return value 
+### When the Rust documentation describes properties of the return value
+
 We state and prove a soundness theorem for the function with
 name: `func_name_sound` and type: `x = func_name input1 input2 ...  ↔ properties of x`.
+
 For example, the soundness theorem for the function `floor_char_boundary` defined as:
 
 ```lean
@@ -174,8 +186,9 @@ theorem floor_char_boundary_sound:  flp = floor_char_boundary s p
 - The modus ponens (→) direction of the theorem is enough to ensure the correctness of the recursive version
 if the properties in the right-hand-side ensure that the function in the left-hand-side is deterministic.
 - The modus ponens reverse (←) direction ensures that we stated enough properties in right-hand-side such that 
-it can be satisfied by only one function. 
-- If the function returns an option, we separately state and prove two soundness theorems for the two cases 
+it can be satisfied by only one function.
+
+If the function returns an option, we separately state and prove two soundness theorems for the two cases
 of the return value: `func_name_none_sound` and `func_name_some_sound`. For example:
     
     ```lean
@@ -183,7 +196,7 @@ of the return value: `func_name_none_sound` and `func_name_some_sound`. For exam
     theorem split_at_some_sound : split_at s p = some (s1, s2) ↔ byteSize s1 = p ∧ s = s1 ++ s2
     ```
 
-- For functions involving the `Pattern` type,  we separately state and prove two equivalent/soundness 
+For functions involving the `Pattern` type,  we separately state and prove two equivalent/soundness
 theorems for the two sub-functions discussed previously (`func_name_char_filter_EQ` and `func_name_substring_EQ`) 
 or (`func_name_char_filter_sound` and `func_name_substring_sound`). For example:
     

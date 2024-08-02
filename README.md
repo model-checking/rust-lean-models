@@ -5,7 +5,7 @@
 
 ## rust-lean-models
 
-Lean models of various functions from Rust libraries to facilitate Lean-based verification of Rust programs.
+Lean models of various functions and data types from Rust libraries to facilitate Lean-based verification of Rust programs.
 
 
 ## Description
@@ -55,7 +55,7 @@ and functions to their Lean equivalents.
 We demonstrate the applications of the library and some proof techniques 
 for string programs in
 [ProofTutorial.lean](https://github.com/model-checking/rust-lean-models/tree/main/RustLeanModels/ProofTutorial.lean).
-This tutorials shows the correctness of two simple programs that compute the longest common prefix
+This tutorial shows the correctness of two simple programs that compute the longest common prefix
 and longest common substring of the two strings.
 More examples can be found in 
 [ProofExample.lean](https://github.com/model-checking/rust-lean-models/tree/main/RustLeanModels/ProofExample.lean).
@@ -65,7 +65,7 @@ More examples can be found in
 ### Recursive function definitions
 
 For each Rust function, we provide a recursive Lean function. Implementing 
-the equivalent functions in Lean recursively enables user to construct
+the equivalent functions in Lean recursively enables users to construct
 induction proofs conveniently. The Lean function has the same name as the Rust original, 
 except when the Rust name clashes with a Lean keyword. In case of a clash, a Rust function `func_name`
 is renamed to `rust_func_name` in Lean.
@@ -82,7 +82,7 @@ def char_indices (s: Str) := char_indices_aux s 0
 For Rust functions that use the Rust `Pattern` type, we implement two recursive sub-functions
 (name: `func_name_char_filter` and  `func_name_substring`) that replace the `Pattern` type
 in the input with either a char filter (of type`Char → Bool`) or a string (of type `List Char`).
-Then we define  the function `func_name` based on these two sub-functions by matching the
+Then we define the function `func_name` based on these two sub-functions by matching the
 input of `Pattern` type. For example, `split` is defined by two sub-functions
 `split_char_filter` and `split_substring` as:
 

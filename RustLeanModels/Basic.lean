@@ -238,7 +238,8 @@ lemma dropLast_append_getLast : s = s.dropLast ++ [(s.getLast a)] :=by
   cases t; simp only [dropLast_single, getLast_singleton, List.nil_append]
   rename_i ht tt; simp only [dropLast_cons₂, cons_append, cons.injEq, true_and]
   have : ht :: tt ≠ [] :=by simp only [ne_eq, not_false_eq_true, not_sym]
-  rw[getLast_cons' a this] ; apply ind
+  rw[getLast_cons _] ; apply ind
+  exact this
 
 
 lemma reverse_iif {l1 l2 : List α}: l1 = l2 ↔ l1.reverse = l2.reverse :=by
@@ -430,7 +431,7 @@ lemma unzip_s (gs: s= List.zip s1 s2):
   cases s2
   simp only [zip_nil_right, not_false_eq_true, not_sym] at gs
   simp only [zip_cons_cons, cons.injEq] at gs
-  simp_all only [length_zip, take_cons_succ, and_self]
+  simp_all only [length_zip, take_succ_cons, and_self]
 
 lemma unzip_eq_left_shorter (gs: s= List.zip s1 s2) (gl: s1.length ≤ s2.length):
    s.unzip.1 = s1 := by
@@ -502,7 +503,7 @@ lemma of_mem_unzip (g: m ∈ (List.unzip l).1) : ∃ n, (m,n) ∈ l := by
   induction l
   simp only [unzip_nil, List.not_mem_nil] at g
   rename_i h t ind
-  simp at g;
+  simp only [unzip_cons, mem_cons] at g
   cases g; use h.2; simp_all only [Prod.mk.eta, mem_cons, true_or]
   rename_i h; have ind:=ind h
   obtain ⟨n, hn⟩ := ind
